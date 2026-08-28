@@ -17,7 +17,6 @@ Example workflow orchestrator implementation based on the
       - [products/product_blocks](#productsproduct_blocks)
       - [products/services](#productsservices)
       - [services](#services)
-      - [templates](#templates)
       - [translations](#translations)
       - [utils](#utils)
       - [workflows](#workflows)
@@ -295,7 +294,6 @@ WFO users.
 │   └── <service>
 ├── services
 │ └── <service>
-├── templates
 ├── translations
 ├── utils
 └── workflows
@@ -341,14 +339,6 @@ service.
 Similar to the product services but with code base wide helper
 functions. For example, the folder `services/netbox/` contains the
 service that interfaces with the NetBox API.
-
-#### templates
-
-List of product configuration templates, with a template per product.
-Based on a template, currently an experimental feature, the WFO can
-generate skeleton code for: the product and product block domain models,
-all four types of workflows including input forms, registration of the
-product and workflows, and the corresponding database migration.
 
 #### translations
 
