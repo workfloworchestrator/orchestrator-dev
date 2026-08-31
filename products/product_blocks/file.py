@@ -10,8 +10,8 @@ class FileBlockInactive(ProductBlockModel, product_block_name="File"):
 
 
 class FileBlockProvisioning(FileBlockInactive, lifecycle=[SubscriptionLifecycle.PROVISIONING]):
-    file_name: str | None = None
-    contents: str | None = None
+    file_name: str
+    contents: str
 
     @computed_field  # type: ignore[misc]
     @property
@@ -20,5 +20,5 @@ class FileBlockProvisioning(FileBlockInactive, lifecycle=[SubscriptionLifecycle.
 
 
 class FileBlock(FileBlockProvisioning, lifecycle=[SubscriptionLifecycle.ACTIVE]):
-    file_name: str | None = None
-    contents: str | None = None
+    file_name: str
+    contents: str
