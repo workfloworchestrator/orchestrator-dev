@@ -69,15 +69,21 @@ services:
 
   orchestrator-ui:
     container_name: orchestrator-ui
+    #TODO replace this with bind-mount or a small UI in this repo
+    #TODO this is what I need to tweak to get separate well-known URLs
     image: ${ORCH_UI_TAG:-ghcr.io/workfloworchestrator/example-orchestrator-ui:latest}
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
       - path: ./docker/overrides/orchestrator-ui/orchestrator-ui.env
         required: false
-    ports:
-      - "3000:3000"
+    #ports:
+    #  - "3000:3000"
+    #  Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    network_mode: "service:keycloak"
     depends_on:
       orchestrator:
+        condition: service_started
+      keycloak:
         condition: service_started
 
   orchestrator:
@@ -87,13 +93,13 @@ services:
       - ./docker/orchestrator/orchestrator.env
       - path: ./docker/overrides/orchestrator/orchestrator.env
         required: false
-    environment:
-      LSO_ENABLED: ${LSO_ENABLED:-False}
-    ports:
-      - "8080:8080"
-      - "5678:5678" #Enable Python debugger
-    expose:
-      - 5678 #Enable Python debugger
+    # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    #ports:
+    #  - "8080:8080"
+    #  - "5678:5678" #Enable Python debugger
+
+    # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    network_mode: "service:keycloak"
     volumes:
       - ./db:/home/orchestrator/db
       - ./workflows:/home/orchestrator/workflows
@@ -109,7 +115,6 @@ services:
       - ./pyproject.toml:/home/orchestrator/pyproject.toml
       - ./alembic.ini:/home/orchestrator/alembic.ini
       - ./translations:/home/orchestrator/translations
-      #- ./templates:/home/orchestrator/templates
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc
       - ${CORE_DIR:-./docker/overrides/orchestrator-core}:/home/orchestrator/orchestrator-core
     entrypoint: ["/home/orchestrator/etc/orchestrator/entrypoint.sh"]
@@ -121,12 +126,36 @@ services:
       embeddings:
         condition: service_healthy
         required: false
+      keycloak:
+        condition: service_started
     healthcheck:
       start_period: 15s
       timeout: 5s
       interval: 5s
       retries: 20
       test: /home/orchestrator/etc/orchestrator/is_healthy.py
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.5
+    #TODO debugging for generating user exports
+    #entrypoint: tail -f /dev/null
+    #Then `export --dir /opt/keycloak/data/export --realm orchestrator --users same_file` inside the container
+    command: start-dev --import-realm --http-port=8085
+    ports:
+      # Keycloak itself
+      - "127.0.0.1:8085:8085"
+      # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+      - "127.0.0.1:3000:3000" # Orch UI
+      # Maybe backend doesn't need this?? Is it just getting data from the JWT?
+      # I think it actually does need this to fetch a cert
+      - "127.0.0.1:8080:8080" # Orch backend
+      - "127.0.0.1:5678:5678" # Orch backend debugger
+    env_file:
+      - ./docker/keycloak/keycloak.env
+    volumes:
+      #TODO debugging for generating user exports
+      #- ./keycloak_export:/opt/keycloak/data/export
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
 
 volumes:
   db-data:
