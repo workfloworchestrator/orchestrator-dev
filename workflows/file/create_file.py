@@ -31,7 +31,7 @@ from products.product_types.file import FileInactive, FileProvisioning
 from products.services.description import description
 from workflows.shared import create_summary_form
 
-FILE_DIR = "/home/orchestrator/minimal-files"
+FILE_SERVICE_DIR = "/home/orchestrator/minimal-files"
 
 #TODO I probably need to handle UUID differently
 def initial_input_form_generator(product_name: str, product: UUIDstr) -> FormGenerator:
@@ -46,6 +46,8 @@ def initial_input_form_generator(product_name: str, product: UUIDstr) -> FormGen
 
     summary_fields = ["file_name", "contents"]
     yield from create_summary_form(user_input_dict, product_name, summary_fields)
+
+    #TODO pre-flight check that file name is available
 
     return user_input_dict
 
@@ -62,11 +64,12 @@ def construct_file_model(
         status=SubscriptionLifecycle.INITIAL,
     )
 
+    #TODO ensure file is uniquely named using separate table
+
     subscription.file.file_name = file_name
     subscription.file.contents = contents
 
     subscription = FileProvisioning.from_other_lifecycle(subscription, SubscriptionLifecycle.PROVISIONING)
-    #????
     subscription.description = description(subscription)
 
     return {
@@ -77,16 +80,12 @@ def construct_file_model(
 
 @step("Ensure directory exists")
 def ensure_directory_exists() -> State:
-    os.makedirs(FILE_DIR, exist_ok=True)
+    os.makedirs(FILE_SERVICE_DIR, exist_ok=True)
     return {}
 
 @step("Create file on disk")
 def create_file_on_disk(subscription: FileProvisioning, file_name: str, contents: str) -> State:
-    #TODO rewrite model and migration to make this non-optional
-    if file_name is None:
-        raise ValueError("Rewrite this")
-
-    p = os.path.join(FILE_DIR, file_name)
+    p = os.path.join(FILE_SERVICE_DIR, file_name)
     with open(p, "w") as f:
         f.write(contents)
     return {"subscription": subscription, "file_path": p}
