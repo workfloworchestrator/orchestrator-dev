@@ -1,5 +1,5 @@
 [project]
-name = "orch-minimal"
+name = "orchestrator-dev"
 version = "0.1.0"
 # Python version should match https://github.com/workfloworchestrator/orchestrator-core/blob/main/Dockerfile
 requires-python = "==3.13.*"

@@ -31,7 +31,7 @@ from products.product_types.file import FileInactive, FileProvisioning
 from products.services.description import description
 from workflows.shared import create_summary_form
 
-FILE_SERVICE_DIR = "/home/orchestrator/minimal-files"
+FILE_SERVICE_DIR = "/home/orchestrator/dev-files"
 
 #TODO I probably need to handle UUID differently
 def initial_input_form_generator(product_name: str, product: UUIDstr) -> FormGenerator:

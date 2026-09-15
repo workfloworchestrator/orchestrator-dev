@@ -967,7 +967,7 @@ wheels = [
 ]
 
 [[package]]
-name = "orch-minimal"
+name = "orchestrator-dev"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
