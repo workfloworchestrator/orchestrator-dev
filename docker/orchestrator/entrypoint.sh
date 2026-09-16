@@ -7,7 +7,7 @@ set -eu
 # This version should match with pyproject.toml
 export UV_PYTHON_DOWNLOADS=never
 
-# Install extra requirements for example-orchestrator
+# Install extra requirements for our repo
 uv sync
 source .venv/bin/activate
 

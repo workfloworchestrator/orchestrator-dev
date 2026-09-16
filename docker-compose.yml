@@ -116,7 +116,12 @@ services:
       - ./alembic.ini:/home/orchestrator/alembic.ini
       - ./translations:/home/orchestrator/translations
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc
-      - ${CORE_DIR:-./docker/overrides/orchestrator-core}:/home/orchestrator/orchestrator-core
+      # CORE_DIR should be specified in ./.env.
+      # You can set a custom orchestrator-core repo to install from source, like ../orchestrator-core
+      # OR you can just clone the repo to docker/overrides/orchestrator-core
+      # CORE_OVERRIDE (set in docker/orchestrator/orchestrator.env) specifies the in-container path
+      # from which the entrypoint should (install and watch) orchestrator-core from
+      - "${CORE_DIR:-./docker/overrides/orchestrator-core}:/home/orchestrator/orchestrator-core"
     entrypoint: ["/home/orchestrator/etc/orchestrator/entrypoint.sh"]
     depends_on:
       postgres:
