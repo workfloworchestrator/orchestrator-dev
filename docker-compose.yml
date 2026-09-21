@@ -80,7 +80,7 @@ services:
       - ../orchestrator-ui-library/packages/orchestrator-ui-components/dist:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/dist
       # Bind-mount src as well to avioid any potential confusion
       - ../orchestrator-ui-library/packages/orchestrator-ui-components/src:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/src
-      # Not all dependencies are present in the node_modules subfolder assemled by orchestrator-ui-library,
+      # Not all dependencies are present in the node_modules subfolder assembled by orchestrator-ui-library,
       # so we use the one assembled by example-orchestrator-ui
       - ../example-orchestrator-ui/node_modules/@orchestrator-ui/orchestrator-ui-components/node_modules:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/node_modules
     working_dir: /app
