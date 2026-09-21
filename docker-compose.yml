@@ -69,9 +69,22 @@ services:
 
   orchestrator-ui:
     container_name: orchestrator-ui
-    #TODO replace this with bind-mount or a small UI in this repo
     #TODO this is what I need to tweak to get separate well-known URLs
     image: ${ORCH_UI_TAG:-ghcr.io/workfloworchestrator/example-orchestrator-ui:latest}
+    volumes:
+      # Bind-mount the example-orchestrator-ui repo source, which the container will watch for changes
+      - ../example-orchestrator-ui:/app
+      # Override the Next.js configuration, so we react to changes in the orchestrator-ui-library node module's dist folder
+      - ./docker/orchestrator-ui/next.config.js:/app/next.config.js
+      # Bind-mount the dist directly from orchestrator-ui-library into node_modules
+      - ../orchestrator-ui-library/packages/orchestrator-ui-components/dist:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/dist
+      # Bind-mount src as well to avioid any potential confusion
+      - ../orchestrator-ui-library/packages/orchestrator-ui-components/src:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/src
+      # Not all dependencies are present in the node_modules subfolder assemled by orchestrator-ui-library,
+      # so we use the one assembled by example-orchestrator-ui
+      - ../example-orchestrator-ui/node_modules/@orchestrator-ui/orchestrator-ui-components/node_modules:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/node_modules
+    working_dir: /app
+    entrypoint: ["npm", "run", "dev"]
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
       - path: ./docker/overrides/orchestrator-ui/orchestrator-ui.env
