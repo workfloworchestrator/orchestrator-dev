@@ -29,4 +29,4 @@ To access the orchestrator, visit http://localhost:3000 and log in as `alice:ali
 
 Changes in the other repos should load automatically, perhaps with a delay of a second or two.
 
-Subsequent runs should only `docker compose up` unless you've changed the `example-orchestrator-ui`.
+Subsequent runs should only require `docker compose up` unless you've changed the `example-orchestrator-ui`.
