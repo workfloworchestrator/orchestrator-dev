@@ -5,6 +5,7 @@ This is a full-stack development environment for the Workflow Orchestrator softw
 At a glance, you get:
 
 * A dead-simple WFO app that provides Files-On-Disk-As-A-Service ;)
+* AuthN|Z via Keycloak, preconfigured with a realm and a couple of users.
 * Hot-reloading for `orchestrator-core`
   * Currently no support for loading upstream packages like `pydantic-forms` and `oauth2_lib`
 * Rebuildable use of `example-orchestrator-ui`
@@ -25,8 +26,10 @@ docker compose up --build
 
 The initial frontend build will take a couple of minutes, but then you'll be hot-reloading.
 
-To access the orchestrator, visit http://localhost:3000 and log in as `alice:alice` or `bob:bob`.
-
 Changes in the other repos should load automatically, perhaps with a delay of a second or two.
 
 Subsequent runs should only require `docker compose up` unless you've changed the `example-orchestrator-ui`.
+
+To access the orchestrator, visit http://localhost:3000 and log in as `alice:alice` or `bob:bob`.
+
+To access keycloak itself, visit http://localhost:8085 and log in as `admin:admin`.
