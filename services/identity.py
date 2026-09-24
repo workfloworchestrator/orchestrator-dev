@@ -1,4 +1,3 @@
-#TODO move
 from http import HTTPStatus
 
 import jwt
@@ -33,12 +32,12 @@ class MinimalUserInfoModel(OIDCUserModel):
 
 class MinimalAuthorization(Authorization):
     async def authorize(self, request: HTTPConnection, user: OIDCUserModel) -> bool | None:
-        #TODO should this take an AuthContext, or is that only workflow/step decorators???
+        # Add any authorization logic for the REST API (not workflows) here
         return True
 
 class MinimalGraphqlAuthorization(GraphqlAuthorization):
     async def authorize(self, request: HTTPConnection, method: str, user: OIDCUserModel) -> bool | None:
-        #TODO should this take an AuthContext, or is that only workflow/step decorators???
+        # Add any authorization logic for the GraphQL API (not workflows) here
         return True
 
 class MinimalAuthentication(OIDCAuth):

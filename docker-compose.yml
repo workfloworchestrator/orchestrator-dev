@@ -46,7 +46,6 @@ services:
     #volumes:
     #  - netbox-redis-cache-data:/data
 
-  #TODO can this go away?
   embeddings:
     container_name: embeddings
     platform: linux/amd64
@@ -67,33 +66,60 @@ services:
       retries: 5
       start_period: 30s
 
+  ui-library-builder:
+    image: node:18
+    #image: node:20
+    working_dir: /repo
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ../orchestrator-ui-library:/repo
+      - lib_root_node_modules:/repo/node_modules
+      - lib_pkg_node_modules:/repo/packages/orchestrator-ui-components/node_modules
+      # Keep .turbo from writing to the host
+      - lib_turbo:/repo/.turbo
+      - lib_dist:/out
+    # TODO: this could be improved to rebuild all four packages
+    command: >
+      sh -c "npm ci &&
+             npx turbo run build &&
+             cd packages/orchestrator-ui-components &&
+             npx tsup --watch --out-dir /out src/index.ts"
+    healthcheck:
+      test: ["CMD", "test", "-f", "/out/index.js"]
+      interval: 5s
+      retries: 60
+
+
   orchestrator-ui:
     container_name: orchestrator-ui
-    #TODO this is what I need to tweak to get separate well-known URLs
-    image: ${ORCH_UI_TAG:-ghcr.io/workfloworchestrator/example-orchestrator-ui:latest}
-    volumes:
-      # Bind-mount the example-orchestrator-ui repo source, which the container will watch for changes
-      - ../example-orchestrator-ui:/app
-      # Override the Next.js configuration, so we react to changes in the orchestrator-ui-library node module's dist folder
-      - ./docker/orchestrator-ui/next.config.js:/app/next.config.js
-      # Bind-mount the dist directly from orchestrator-ui-library into node_modules
-      - ../orchestrator-ui-library/packages/orchestrator-ui-components/dist:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/dist
-      # Bind-mount src as well to avioid any potential confusion
-      - ../orchestrator-ui-library/packages/orchestrator-ui-components/src:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/src
-      # Not all dependencies are present in the node_modules subfolder assembled by orchestrator-ui-library,
-      # so we use the one assembled by example-orchestrator-ui
-      - ../example-orchestrator-ui/node_modules/@orchestrator-ui/orchestrator-ui-components/node_modules:/app/node_modules/@orchestrator-ui/orchestrator-ui-components/node_modules
-    working_dir: /app
+    build:
+      context: ../example-orchestrator-ui
+      target: builder
     entrypoint: ["npm", "run", "dev"]
+    volumes:
+      - ./README.md:/README.md
+      # Override Next.js configuration to react to changes in orchestrator-ui-components dist/ 
+      - ./docker/orchestrator-ui/next.config.js:/app/next.config.js
+      # Mount orchestrator-ui-components dist/ from ui-builder
+      - type: volume
+        source: lib_dist
+        target: /app/node_modules/@orchestrator-ui/orchestrator-ui-components/dist
+        volume:
+          # Prevents previous contents of dist/ from appearing if we mount an empty directory
+          nocopy: true
+    working_dir: /app
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
       - path: ./docker/overrides/orchestrator-ui/orchestrator-ui.env
         required: false
+    # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
     #ports:
     #  - "3000:3000"
-    #  Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
     network_mode: "service:keycloak"
     depends_on:
+      ui-library-builder:
+        condition: service_healthy
       orchestrator:
         condition: service_started
       keycloak:
@@ -155,7 +181,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:22.0.5
-    #TODO debugging for generating user exports
+    # To debug or generate user exports, uncomment the below, comment out "command", and uncomment the export volume below
     #entrypoint: tail -f /dev/null
     #Then `export --dir /opt/keycloak/data/export --realm orchestrator --users same_file` inside the container
     command: start-dev --import-realm --http-port=8085
@@ -171,7 +197,7 @@ services:
     env_file:
       - ./docker/keycloak/keycloak.env
     volumes:
-      #TODO debugging for generating user exports
+      # Uncomment if you need to generate new user exports
       #- ./keycloak_export:/opt/keycloak/data/export
       - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
 
@@ -180,3 +206,9 @@ volumes:
     driver: local
   netbox-redis-cache-data:
     driver: local
+  # For binding UI builder into UI container
+  lib_root_node_modules:
+  lib_pkg_node_modules:
+  lib_turbo:
+  lib_dist:
+  #TODO additional volumes for preventing writes back to the host FS. If possible, should not persist.
