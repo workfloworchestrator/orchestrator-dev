@@ -19,11 +19,14 @@ git clone https://github.com/workfloworchestrator/orchestrator-ui-library.git
 git clone https://github.com/workfloworchestrator/example-orchestrator-ui.git
 git clone https://github.com/workfloworchestrator/orchestrator-dev.git
 cd orchestrator-dev
-docker compose up
+docker compose up --build
 ```
+
 
 The initial frontend build will take a couple of minutes, but then you'll be hot-reloading.
 
 To access the orchestrator, visit http://localhost:3000 and log in as `alice:alice` or `bob:bob`.
 
 Changes in the other repos should load automatically, perhaps with a delay of a second or two.
+
+Subsequent runs should only `docker compose up` unless you've changed the `example-orchestrator-ui`.

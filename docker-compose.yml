@@ -98,7 +98,6 @@ services:
       target: builder
     entrypoint: ["npm", "run", "dev"]
     volumes:
-      - ./README.md:/README.md
       # Override Next.js configuration to react to changes in orchestrator-ui-components dist/ 
       - ./docker/orchestrator-ui/next.config.js:/app/next.config.js
       # Mount orchestrator-ui-components dist/ from ui-builder
@@ -108,6 +107,7 @@ services:
         volume:
           # Prevents previous contents of dist/ from appearing if we mount an empty directory
           nocopy: true
+      #TODO bind-mount ../example-orchestrator-ui
     working_dir: /app
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
