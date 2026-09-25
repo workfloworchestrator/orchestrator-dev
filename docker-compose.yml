@@ -140,6 +140,8 @@ services:
     # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
     network_mode: "service:keycloak"
     volumes:
+      # Prevent uv from re-downloading dependencies every time the container starts
+      - ./docker/orchestrator/uv_cache:/home/orchestrator/.cache/uv
       - ./db:/home/orchestrator/db
       - ./workflows:/home/orchestrator/workflows
       - ./products:/home/orchestrator/products
