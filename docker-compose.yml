@@ -140,24 +140,25 @@ services:
     # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
     network_mode: "service:keycloak"
     volumes:
-      # Prevent uv from re-downloading dependencies every time the container starts
-      - ./docker/orchestrator/uv_cache:/home/orchestrator/.cache/uv
-      - ./db:/home/orchestrator/db
-      - ./workflows:/home/orchestrator/workflows
-      - ./products:/home/orchestrator/products
-      - ./migrations:/home/orchestrator/migrations
-      - ./main.py:/home/orchestrator/main.py
-      - ./wsgi.py:/home/orchestrator/wsgi.py
-      - ./settings.py:/home/orchestrator/settings.py
-      - ./graphql_utils:/home/orchestrator/graphql_utils
-      - ./utils:/home/orchestrator/utils
-      - ./services:/home/orchestrator/services
-      - ./pyproject.toml:/home/orchestrator/pyproject.toml
       - ./alembic.ini:/home/orchestrator/alembic.ini
+      - ./db:/home/orchestrator/db
+      - ./graphql_utils:/home/orchestrator/graphql_utils
+      - ./main.py:/home/orchestrator/main.py
+      - ./migrations:/home/orchestrator/migrations
+      - ./products:/home/orchestrator/products
+      - ./pyproject.toml:/home/orchestrator/pyproject.toml
+      - ./services:/home/orchestrator/services
+      - ./settings.py:/home/orchestrator/settings.py
       - ./translations:/home/orchestrator/translations
+      - ./utils:/home/orchestrator/utils
+      - ./workflows:/home/orchestrator/workflows
+      - ./wsgi.py:/home/orchestrator/wsgi.py
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc
       - ./docker/orchestrator/entrypoint.sh:/home/orchestrator/entrypoint.sh
       - ./docker/orchestrator/is_healthy.sh:/home/orchestrator/is_healthy.sh
+      # Prevent uv from re-downloading dependencies every time the container starts.
+      # (This is mapped to a local directory instead of a named volume to get around permission issues.)
+      - ./docker/orchestrator/uv_cache:/home/orchestrator/.cache/uv
       # CORE_DIR should be specified in ./.env.
       # You can set a custom orchestrator-core repo to install from source, like ../orchestrator-core
       # OR you can just clone the repo to docker/overrides/orchestrator-core
