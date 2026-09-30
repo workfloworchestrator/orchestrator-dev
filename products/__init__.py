@@ -14,25 +14,10 @@
 
 from orchestrator.core.domain import SUBSCRIPTION_MODEL_REGISTRY
 
-from products.product_types.core_link import CoreLink
-from products.product_types.l2vpn import L2vpn
-from products.product_types.node import Node
-from products.product_types.nsip2p import Nsip2p
-from products.product_types.nsistp import Nsistp
-from products.product_types.port import Port
+from products.product_types.file import File
 
 SUBSCRIPTION_MODEL_REGISTRY.update(
     {
-        "node Cisco": Node,
-        "node Nokia": Node,
-        "node Cumulus": Node,
-        "node FRR": Node,
-        "port 10G": Port,
-        "port 100G": Port,
-        "core link 10G": CoreLink,
-        "core link 100G": CoreLink,
-        "l2vpn": L2vpn,
-        "nsistp": Nsistp,
-        "nsip2p": Nsip2p,
+        "file": File,
     }
 )

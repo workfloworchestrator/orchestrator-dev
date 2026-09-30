@@ -3,22 +3,6 @@ services:
     volumes:
       - ./docker/postgresql:/docker-entrypoint-initdb.d:z
 
-  netbox:
-    volumes:
-      - ./docker/netbox/configuration:/etc/netbox/config:z,ro
-      - ./docker/netbox/reports:/etc/netbox/reports:z,ro
-      - ./docker/netbox/scripts:/etc/netbox/scripts:z,ro
-      - ./docker/netbox/entrypoint.sh:/etc/netbox/entrypoint.sh:z
-      - ./docker/netbox/data.json:/etc/netbox/data.json:z
-
-  netbox-worker:
-    volumes:
-      - ./docker/netbox/configuration:/etc/netbox/config:z,ro
-      - ./docker/netbox/reports:/etc/netbox/reports:z,ro
-      - ./docker/netbox/scripts:/etc/netbox/scripts:z,ro
-      - ./docker/netbox/entrypoint.sh:/etc/netbox/entrypoint.sh:z
-      - ./docker/netbox/data.json:/etc/netbox/data.json:z
-
   orchestrator:
     volumes:
       - ./db:/home/orchestrator/db:z
@@ -35,6 +19,6 @@ services:
       - ./pyproject.toml:/home/orchestrator/pyproject.toml:z
       - ./alembic.ini:/home/orchestrator/alembic.ini:z
       - ./translations:/home/orchestrator/translations:z
-      - ./templates:/home/orchestrator/templates:z
+      #- ./templates:/home/orchestrator/templates:z
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc:z
       - ${CORE_DIR:-./docker/overrides/orchestrator-core}:/home/orchestrator/orchestrator-core:z
