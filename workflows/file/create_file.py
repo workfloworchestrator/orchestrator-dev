@@ -54,6 +54,7 @@ def initial_input_form_generator(product_name: str, product: UUIDstr) -> FormGen
 
 @step("Construct Subscription model")
 def construct_file_model(
+    process_id: UUIDstr,
     product: UUIDstr,
     file_name: str | None,
     contents: str | None,
@@ -62,6 +63,7 @@ def construct_file_model(
         product_id=product,
         customer_id=str(uuid.uuid4()),
         status=SubscriptionLifecycle.INITIAL,
+        process_id=process_id,
     )
 
     #TODO ensure file is uniquely named using separate table
