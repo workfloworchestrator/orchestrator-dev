@@ -156,15 +156,17 @@ services:
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc
       - ./docker/orchestrator/entrypoint.sh:/home/orchestrator/entrypoint.sh
       - ./docker/orchestrator/is_healthy.sh:/home/orchestrator/is_healthy.sh
-      # Prevent uv from re-downloading dependencies every time the container starts.
-      # (This is mapped to a local directory instead of a named volume to get around permission issues.)
-      - ./docker/orchestrator/uv_cache:/home/orchestrator/.cache/uv
       # CORE_DIR should be specified in ./.env.
       # You can set a custom orchestrator-core repo to install from source, like ../orchestrator-core
       # OR you can just clone the repo to docker/overrides/orchestrator-core
       # CORE_OVERRIDE (set in docker/orchestrator/orchestrator.env) specifies the in-container path
       # from which the entrypoint should (install and watch) orchestrator-core from
       - "${CORE_DIR:-./docker/overrides/orchestrator-core}:/home/orchestrator/orchestrator-core"
+      # Let uv keep its state between runs
+      - orch-uv-cache:/home/orchestrator/.cache/uv
+      - orch-venv:/home/orchestrator/.venv
+      # Make space for an internal .venv for orchestrator-core as well, to avoid accidentally roasting one present in the host repo
+      - orch-core-venv:/home/orchestrator/orchestrator-core/.venv
     entrypoint: ["/home/orchestrator/entrypoint.sh"]
     depends_on:
       postgres:
@@ -176,12 +178,26 @@ services:
         required: false
       keycloak:
         condition: service_started
+      init-orchestrator:
+        condition: service_completed_successfully
     healthcheck:
       start_period: 15s
       timeout: 5s
       interval: 5s
       retries: 20
       test: /home/orchestrator/is_healthy.sh
+
+  # Make sure our mapped volumes are accessible
+  init-orchestrator:
+    # Might as well use this since we need it
+    image: ${ORCH_BACKEND_TAG:-ghcr.io/workfloworchestrator/orchestrator-core:latest}
+    user: "0:0" # Need to be root to change permissions
+    # Change group ownership and permissions for all of these at once
+    volumes:
+      - orch-uv-cache:/temp/orch-uv-cache
+      - orch-venv:/temp/orch-venv
+      - orch-core-venv:/temp/orch-core-venv
+    command: sh -c "chgrp -R 1000 /temp && chmod -R g+rwX /temp"
 
   keycloak:
     image: quay.io/keycloak/keycloak:22.0.5
@@ -210,6 +226,10 @@ volumes:
     driver: local
   netbox-redis-cache-data:
     driver: local
+  # For caching the virtual environment
+  orch-uv-cache:
+  orch-venv:
+  orch-core-venv:
   # For binding UI builder into UI container
   lib_root_node_modules:
   lib_pkg_node_modules:
