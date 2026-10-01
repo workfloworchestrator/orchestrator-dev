@@ -167,7 +167,16 @@ services:
       - orch-venv:/home/orchestrator/.venv
       # Make space for an internal .venv for orchestrator-core as well, to avoid accidentally roasting one present in the host repo
       - orch-core-venv:/home/orchestrator/orchestrator-core/.venv
-    entrypoint: ["/home/orchestrator/entrypoint.sh"]
+    user: root
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      "echo 'Setting permissions...' &&
+       chgrp -R orchestrator /home/orchestrator/.cache/uv /home/orchestrator/.venv /home/orchestrator/orchestrator-core/.venv &&
+       chmod -R g+rwX /home/orchestrator/.cache/uv /home/orchestrator/.venv /home/orchestrator/orchestrator-core/.venv &&
+       echo 'Permissions set.' &&
+       export HOME=/home/orchestrator &&
+       export XDG_CACHE_HOME=/home/orchestrator/.cache &&
+       su -p orchestrator -c /home/orchestrator/entrypoint.sh"
     depends_on:
       postgres:
         condition: service_healthy
@@ -178,26 +187,12 @@ services:
         required: false
       keycloak:
         condition: service_started
-      init-orchestrator:
-        condition: service_completed_successfully
     healthcheck:
       start_period: 15s
       timeout: 5s
       interval: 5s
       retries: 20
       test: /home/orchestrator/is_healthy.py
-
-  # Make sure our mapped volumes are accessible
-  init-orchestrator:
-    # Might as well use this since we need it
-    image: ${ORCH_BACKEND_TAG:-ghcr.io/workfloworchestrator/orchestrator-core:latest}
-    user: "0:0" # Need to be root to change permissions
-    # Change group ownership and permissions for all of these at once
-    volumes:
-      - orch-uv-cache:/temp/orch-uv-cache
-      - orch-venv:/temp/orch-venv
-      - orch-core-venv:/temp/orch-core-venv
-    command: sh -c "chgrp -R 1000 /temp && chmod -R g+rwX /temp"
 
   keycloak:
     image: quay.io/keycloak/keycloak:22.0.5
