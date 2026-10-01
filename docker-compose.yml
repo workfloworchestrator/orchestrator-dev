@@ -155,7 +155,7 @@ services:
       - ./wsgi.py:/home/orchestrator/wsgi.py
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc
       - ./docker/orchestrator/entrypoint.sh:/home/orchestrator/entrypoint.sh
-      - ./docker/orchestrator/is_healthy.sh:/home/orchestrator/is_healthy.sh
+      - ./docker/orchestrator/is_healthy.py:/home/orchestrator/is_healthy.py
       # CORE_DIR should be specified in ./.env.
       # You can set a custom orchestrator-core repo to install from source, like ../orchestrator-core
       # OR you can just clone the repo to docker/overrides/orchestrator-core
@@ -185,7 +185,7 @@ services:
       timeout: 5s
       interval: 5s
       retries: 20
-      test: /home/orchestrator/is_healthy.sh
+      test: /home/orchestrator/is_healthy.py
 
   # Make sure our mapped volumes are accessible
   init-orchestrator:

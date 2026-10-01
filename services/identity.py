@@ -12,6 +12,14 @@ from settings import settings
 
 logger = structlog.get_logger(__name__)
 
+_JWK_CLIENT: jwt.PyJWKClient | None = None
+
+def get_jwk_client() -> jwt.PyJWKClient:
+    global _JWK_CLIENT
+    if _JWK_CLIENT is None:
+        _JWK_CLIENT = jwt.PyJWKClient(settings.OAUTH2_CERT_URL, cache_keys=True)
+    return _JWK_CLIENT
+
 class MinimalUserInfoModel(OIDCUserModel):
     # Add any extra claims here
     REGISTERED_CLAIMS = OIDCUserModel.REGISTERED_CLAIMS + []
@@ -41,17 +49,15 @@ class MinimalGraphqlAuthorization(GraphqlAuthorization):
         return True
 
 class MinimalAuthentication(OIDCAuth):
-    #TODO this probably needs to use the updated interface instead of OIDCUserModel...
     async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
         user_model = None
 
         try:
-            #TODO perhaps no /auth/?
-            #OAUTH2_ISSUER: str = "https://127.0.01:8085/auth/realms/esnetldap"
-            #TODO what's this do?
-            #OAUTH2_JWT_OPTIONS: dict = {"verify_aud": False}
-            #TODO only initialize this once per class, or initialize elsewhere
-            jwk_client = jwt.PyJWKClient(settings.OAUTH2_CERT_URL, cache_keys=True)
+            # Normally, you would want to include OAUTH2_ISSUER to verify the iss parameter (RFC 9207)
+            # https://www.rfc-editor.org/rfc/rfc9207.html
+            # However, HTTPS isn't currently active on the dev keycloak instance.
+            # OAUTH2_ISSUER: str = "https://keycloak:8085/auth/realms/orchestrator"
+            jwk_client = get_jwk_client()
 
             signing_key = jwk_client.get_signing_key_from_jwt(token)
 
@@ -59,9 +65,8 @@ class MinimalAuthentication(OIDCAuth):
                 token,
                 signing_key.key,
                 algorithms=settings.OAUTH2_SIGNING_ALGORITHMS,
-                #TODO should we add anything here?
-                #issuer=OAUTH2_ISSUER,
-                #options=OAUTH2_JWT_OPTIONS,
+                #issuer=OAUTH2_ISSUER, # See above
+                options={"verify_aud": True},
             )
 
             user_model = MinimalUserInfoModel(**decoded_token)
