@@ -10,43 +10,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import operator
-from collections.abc import Iterator
 from pprint import pformat
-from typing import Annotated, Generator, List, TypeAlias, cast
+from typing import Generator, List, TypeAlias, cast
 from uuid import UUID
 
 import structlog
-from annotated_types import Ge, Le, doc
-from deepdiff import DeepDiff
 from orchestrator.core.db import (
     ProductTable,
     ResourceTypeTable,
-    SubscriptionInstanceRelationTable,
     SubscriptionInstanceTable,
     SubscriptionInstanceValueTable,
     SubscriptionTable,
     db,
 )
-from orchestrator.core.domain import SubscriptionModel
 from orchestrator.core.domain.base import ProductBlockModel
 from orchestrator.core.forms import FormPage
-from orchestrator.core.services import subscriptions
 from orchestrator.core.types import SubscriptionLifecycle
 from pydantic import ConfigDict
-from pydantic_core.core_schema import ValidationInfo
 from sqlalchemy import select
-from sqlalchemy.orm import aliased
 
 from db.models import CustomerTable
-from pydantic_forms.types import State, SummaryData, UUIDstr
+from pydantic_forms.types import SummaryData, UUIDstr
 from pydantic_forms.validators import Choice, MigrationSummary, migration_summary
 
 logger = structlog.get_logger(__name__)
-
-Vlan = Annotated[int, Ge(2), Le(4094), doc("VLAN ID.")]
-
-AllowedNumberOfL2vpnPorts = Annotated[int, Ge(2), Le(8), doc("Allowed number of L2vpn ports.")]
 
 
 def subscriptions_by_product_type(product_type: str, status: List[SubscriptionLifecycle]) -> List[SubscriptionTable]:
@@ -55,14 +42,14 @@ def subscriptions_by_product_type(product_type: str, status: List[SubscriptionLi
     list of all subscriptions of a given product type. For example, you could
     call this like so:
 
-    >>> subscriptions_by_product_type("Node", [SubscriptionLifecycle.ACTIVE, SubscriptionLifecycle.PROVISIONING])
+    >>> subscriptions_by_product_type("File", [SubscriptionLifecycle.ACTIVE, SubscriptionLifecycle.PROVISIONING])
     [SubscriptionTable(su...note=None), SubscriptionTable(su...note=None)]
 
-    You now have a list of all active Node subscription instances and can then
+    You now have a list of all active File subscription instances and can then
     use them in your workflow.
 
     Args:
-        product_type (str): The prouduct type in the DB (i.e. Node, User, etc.)
+        product_type (str): The product type in the DB (i.e. File, User, etc.)
         status (List[SubscriptionLifecycle]): The lifecycle states you want returned (i.e.
         SubscriptionLifecycle.ACTIVE)
 
@@ -106,15 +93,6 @@ def subscriptions_by_product_type_and_instance_value(
     )
 
 
-def node_selector(enum: str = "NodesEnum") -> type[Choice]:
-    node_subscriptions = subscriptions_by_product_type("Node", [SubscriptionLifecycle.ACTIVE])
-    nodes = {
-        str(subscription.subscription_id): subscription.description
-        for subscription in sorted(node_subscriptions, key=lambda node: node.description)
-    }
-    return Choice(enum, zip(nodes.keys(), nodes.items()))  # type:ignore
-
-
 def summary_form(product_name: str, summary_data: SummaryData) -> Generator:
     ProductSummary: TypeAlias = cast(type[MigrationSummary], migration_summary(summary_data))
 
@@ -138,22 +116,6 @@ def modify_summary_form(user_input: dict, block: ProductBlockModel, fields: List
         block.subscription.product.name if block.subscription else "No Product Name Found",
         SummaryData(labels=fields, headers=["Before", "After"], columns=[before, after]),
     )
-
-
-def pretty_print_deepdiff(diff: DeepDiff) -> str:
-    return pformat(diff.to_dict(), indent=2, compact=False)
-
-
-def _get_subscription_ids_from_info(info: ValidationInfo, port_field_name: str) -> list[str] | None:
-    match info.data.get(port_field_name):
-        case list() | tuple() | set() as iterable:
-            return list(iterable)
-        case str() as scalar:
-            return [scalar]
-        case None:
-            return None
-        case _ as invalid:
-            raise ValueError(f"Cannot convert value {invalid} in field {port_field_name} to list of subscription ids")
 
 
 def _get_subscription(subscription_id: UUID | UUIDstr) -> SubscriptionTable:
