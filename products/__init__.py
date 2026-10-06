@@ -18,6 +18,6 @@ from products.product_types.file import File
 
 SUBSCRIPTION_MODEL_REGISTRY.update(
     {
-        "file": File,
+        "File": File,
     }
 )
