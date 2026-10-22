@@ -35,7 +35,9 @@ To access the orchestrator, visit http://localhost:3000 and log in as `alice:ali
 To access keycloak itself, visit http://localhost:8085 and log in as `admin:admin`.
 
 ## Notes
+### Core version
 
+Users must ensure that the orchestrator-core verison pinned in `pyproject.toml` is compatible with the image specified via `ORCH_BACKEND_TAG` in their `.env`, as uv does not yet support variable expansion within `pyproject.toml`.
+
+### Artifacts
 When `orchestrator-ui-library` is bind-mounted, its `node_modules` is overriden by another volume, so this won't touch the host FS for the repo. However, all the other places that Node, Husky, and Turbo write to the filesystem are still bind-mounted. `git clean -xdn` will do a dry-run cleanup of these files, and `git clean -xdf` will execute the cleanup.
-
-

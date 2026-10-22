@@ -4,8 +4,8 @@ version = "0.1.0"
 # Python version should match https://github.com/workfloworchestrator/orchestrator-core/blob/main/Dockerfile
 requires-python = "==3.13.*"
 dependencies = [
-  #TODO ensure this matches docker image tag
-  "orchestrator-core==5.0.3",
+  # Ensure this matches Docker image tag specified by ORCH_BACKEND_TAG
+  "orchestrator-core==5.5.0",
   "pyjwt>=2.13.0",
 ]
 
