@@ -43,8 +43,6 @@ services:
       - ./docker/redis/redis.env
       - path: ./docker/overrides/redis/redis.env
         required: false
-    #volumes:
-    #  - netbox-redis-cache-data:/data
 
   embeddings:
     container_name: embeddings
@@ -66,9 +64,12 @@ services:
       retries: 5
       start_period: 30s
 
+  # ui-library-builder provides separate TS hot-reloading for the UI *library*,
+  # which requires a separate process from the example-orchestrator-ui application's
+  # Next.js hot-reload. The output /out is on a volume that is mounted to the package's
+  # installed /dist in the orchestrator-ui service.
   ui-library-builder:
-    image: node:18
-    #image: node:20
+    image: node:20
     working_dir: /repo
     environment:
       - CHOKIDAR_USEPOLLING=true
@@ -79,7 +80,7 @@ services:
       # Keep .turbo from writing to the host
       - lib_turbo:/repo/.turbo
       - lib_dist:/out
-    # TODO: this could be improved to rebuild all four packages
+    # This could be improved to rebuild all four packages
     command: >
       sh -c "npm ci &&
              npx turbo run build &&
@@ -107,13 +108,13 @@ services:
         volume:
           # Prevents previous contents of dist/ from appearing if we mount an empty directory
           nocopy: true
-      #TODO bind-mount ../example-orchestrator-ui
+      # It'd be cool to bindmount example-orchestrator-ui here if we get hot-reloading to work.
     working_dir: /app
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
       - path: ./docker/overrides/orchestrator-ui/orchestrator-ui.env
         required: false
-    # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
     #ports:
     #  - "3000:3000"
     network_mode: "service:keycloak"
@@ -132,12 +133,12 @@ services:
       - ./docker/orchestrator/orchestrator.env
       - path: ./docker/overrides/orchestrator/orchestrator.env
         required: false
-    # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
     #ports:
     #  - "8080:8080"
     #  - "5678:5678" #Enable Python debugger
 
-    # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
     network_mode: "service:keycloak"
     volumes:
       - ./alembic.ini:/home/orchestrator/alembic.ini
@@ -158,7 +159,7 @@ services:
       - ./docker/orchestrator/is_healthy.py:/home/orchestrator/is_healthy.py
       # Prevent uv from re-downloading dependencies every time the container starts.
       # (This is mapped to a local directory instead of a named volume to get around permission issues.)
-      - ./docker/orchestrator/uv_cache:/home/orchestrator/.cache/uv
+      #- ./docker/orchestrator/uv_cache:/home/orchestrator/.cache/uv
       # CORE_DIR should be specified in ./.env.
       # You can set a custom orchestrator-core repo to install from source, like ../orchestrator-core
       # OR you can just clone the repo to docker/overrides/orchestrator-core
@@ -185,18 +186,21 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:22.0.5
-    # To debug or generate user exports, uncomment the below, comment out "command", and uncomment the export volume below
-    #entrypoint: tail -f /dev/null
-    #Then `export --dir /opt/keycloak/data/export --realm orchestrator --users same_file` inside the container
+    # To debug or generate user exports, uncomment the below, comment out "command", and uncomment the keycloak_export volume at bottom of service.
+    # entrypoint: tail -f /dev/null
+    # Then `export --dir /opt/keycloak/data/export --realm orchestrator --users same_file` inside the container
     command: start-dev --import-realm --http-port=8085
     ports:
       # Keycloak itself
       - "127.0.0.1:8085:8085"
-      # Awful hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+      # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend.
+      # Instead these services have to hand off their networking to the keycloak service in order to live on the same network.
+      # This allows to temporarily use a local URI that works in both the host OS browser and intra-app communication within the Docker network.
       - "127.0.0.1:3000:3000" # Orch UI
       # Maybe backend doesn't need this?? Is it just getting data from the JWT?
       # I think it actually does need this to fetch a cert
-      - "127.0.0.1:8080:8080" # Orch backend
+      # Orch backend is proxied because it needs access to t
+      - "127.0.0.1:8080:8080" # Orch backend app
       - "127.0.0.1:5678:5678" # Orch backend debugger
     env_file:
       - ./docker/keycloak/keycloak.env

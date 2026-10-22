@@ -18,7 +18,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     IPv6_CORE_LINK_PREFIX: str = "fc00:0:0:10::/64"
     OAUTH2_CERT_URL: str = "http://127.0.0.1:8085/realms/orchestrator/protocol/openid-connect/certs"
-    # Ben: This needs to be a list, so I'm keeping it out of the .env file.
+    # This needs to be a list, so it isn't specified in the .env file.
     OAUTH2_SIGNING_ALGORITHMS: list[str] = ["RS256"]
 
 
