@@ -14,9 +14,6 @@ module.exports = {
         '@copilotkit/react-core',
         '@orchestrator-ui/orchestrator-ui-components',
     ],
-
-    // The following is additional configuration, not present in the original:
-
     webpack: (config, { dev, isServer }) => {
         if (dev) {
             // This effectively excludes orchestrator-ui-components from being managed by Next.js's default snapshot mechanism.
@@ -39,4 +36,6 @@ module.exports = {
         }
         return config;
     },
+    // Turbopack is now the default, need an empty turbopack config to disable for webpack.
+    turbopack: {},
 };
