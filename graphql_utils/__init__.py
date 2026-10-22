@@ -13,12 +13,11 @@
 
 from orchestrator.core.graphql.schemas import DEFAULT_GRAPHQL_MODELS
 
-from graphql_utils.federation import NodeBlockInactive
 from graphql_utils.resolvers import custom_subscription_interface
 
 CUSTOM_GRAPHQL_MODELS = DEFAULT_GRAPHQL_MODELS | {
-    "NodeBlockInactive": NodeBlockInactive,
-    "NodeBlock": NodeBlockInactive,
+    # Add these here, for example:
+    #"NodeBlockInactive": NodeBlockInactive,
 }
 
 __all__ = [

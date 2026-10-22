@@ -17,15 +17,7 @@ from typing import Union
 
 from orchestrator.core.domain.base import ProductBlockModel, ProductModel, SubscriptionModel
 
-from products.product_blocks.core_port import CorePortBlockProvisioning
-from products.product_blocks.sap import SAPBlockProvisioning
-from products.product_blocks.virtual_circuit import VirtualCircuitBlockProvisioning
-from products.product_types.core_link import CoreLinkProvisioning
-from products.product_types.l2vpn import L2vpnProvisioning
-from products.product_types.node import NodeProvisioning
-from products.product_types.nsip2p import Nsip2pProvisioning
-from products.product_types.nsistp import NsistpProvisioning
-from products.product_types.port import PortProvisioning
+from products.product_types.file import FileProvisioning
 from utils.singledispatch import single_dispatch_base
 
 
@@ -52,56 +44,5 @@ def description(model: Union[ProductModel, ProductBlockModel, SubscriptionModel]
 
 
 @description.register
-def _(node: NodeProvisioning) -> str:
-    return f"node {node.node.node_name} ({node.node.node_status})"
-
-
-@description.register
-def _(port: PortProvisioning) -> str:
-    return f"{port.product.name} {port.port.node.node_name} {port.port.port_name} {port.port.port_description}"
-
-
-@description.register
-def _(core_link: CoreLinkProvisioning) -> str:
-    return (
-        f"{core_link.product.name} "
-        f"{core_link.core_link.ports[0].node.node_name} {core_link.core_link.ports[0].port_name}"
-        " <-> "
-        f"{core_link.core_link.ports[1].port_name} {core_link.core_link.ports[1].node.node_name}"
-    ) + (" (maintenance)" if core_link.core_link.under_maintenance else "")
-
-
-@description.register
-def _(core_port: CorePortBlockProvisioning) -> str:
-    return f"{core_port.name} {core_port.node.node_name} {core_port.port_name}"
-
-
-def _vc_policer_status(vc: VirtualCircuitBlockProvisioning) -> str:
-    return " (policer active)" if vc.speed_policer else ""
-
-
-def _saps_to_nodes(saps: list[SAPBlockProvisioning]) -> str:
-    return "-".join(sorted(list(set([sap.port.node.node_name for sap in saps]))))
-
-
-@description.register
-def _(l2vpn: L2vpnProvisioning) -> str:
-    vc = l2vpn.virtual_circuit
-    return f"{l2vpn.product.tag} {vc.speed} Mbit/s ({_saps_to_nodes(vc.saps)}){_vc_policer_status(vc)}"
-
-
-@description.register
-def _(nsistp: NsistpProvisioning) -> str:
-    return (
-        f"{nsistp.product.tag} "
-        f"{nsistp.nsistp.stp_id} "
-        f"topology {nsistp.nsistp.topology} "
-        f"{nsistp.nsistp.sap.port.node.node_name} "
-        f"{nsistp.nsistp.bandwidth} Mbit/s"
-    )
-
-
-@description.register
-def _(nsip2p: Nsip2pProvisioning) -> str:
-    vc = nsip2p.virtual_circuit
-    return f"{nsip2p.product.tag} {vc.speed} Mbit/s({_saps_to_nodes(vc.saps)}){_vc_policer_status(vc)}"
+def _(file: FileProvisioning) -> str:
+    return f"file {file.file.file_name}"

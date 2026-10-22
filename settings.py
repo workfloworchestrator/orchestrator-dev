@@ -1,4 +1,4 @@
-# Copyright 2019-2023 SURF.
+# Copyright 2019-2026 SURF, GEANT, ESnet.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -16,12 +16,10 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    NETBOX_URL: str = "http://netbox:8080"
-    NETBOX_TOKEN: str = ""
-    IPv4_LOOPBACK_PREFIX: str = "10.0.127.0/24"
-    IPv6_LOOPBACK_PREFIX: str = "fc00:0:0:127::/64"
-    IPv4_CORE_LINK_PREFIX: str = "10.0.10.0/24"
     IPv6_CORE_LINK_PREFIX: str = "fc00:0:0:10::/64"
+    OAUTH2_CERT_URL: str = "http://127.0.0.1:8085/realms/orchestrator/protocol/openid-connect/certs"
+    # Ben: This needs to be a list, so I'm keeping it out of the .env file.
+    OAUTH2_SIGNING_ALGORITHMS: list[str] = ["RS256"]
 
 
 settings = Settings()
