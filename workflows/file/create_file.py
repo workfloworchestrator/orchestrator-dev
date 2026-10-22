@@ -1,4 +1,4 @@
-# Copyright 2019-2023 SURF.
+# Copyright 2019-2026 SURF, GEANT, ESnet.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -10,8 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import uuid
 import json
 import os
@@ -33,7 +31,7 @@ from workflows.shared import create_summary_form
 
 FILE_SERVICE_DIR = "/home/orchestrator/dev-files"
 
-#TODO I probably need to handle UUID differently
+#TODO we probably need to handle UUID differently
 def initial_input_form_generator(product_name: str, product: UUIDstr) -> FormGenerator:
     class CreateFileForm(FormPage):
         model_config = ConfigDict(title=product_name)
@@ -61,6 +59,7 @@ def construct_file_model(
 ) -> State:
     subscription = FileInactive.from_product_id(
         product_id=product,
+        #TODO add a customer using the existing table!
         customer_id=str(uuid.uuid4()),
         status=SubscriptionLifecycle.INITIAL,
         process_id=process_id,
