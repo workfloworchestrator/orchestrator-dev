@@ -69,7 +69,7 @@ services:
   # Next.js hot-reload. The output /out is on a volume that is mounted to the package's
   # installed /dist in the orchestrator-ui service.
   ui-library-builder:
-    image: node:20
+    image: node:26
     working_dir: /repo
     environment:
       - CHOKIDAR_USEPOLLING=true
