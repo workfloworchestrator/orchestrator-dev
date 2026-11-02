@@ -10,28 +10,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import uuid
-import json
 import os
-from random import randrange
+import uuid
 
-from orchestrator.core.services.products import get_product_by_id
-from orchestrator.core.targets import Target
 from orchestrator.core.types import SubscriptionLifecycle
 from orchestrator.core.workflow import StepList, begin, step
-from orchestrator.core.workflows.steps import store_process_subscription
 from orchestrator.core.workflows.utils import create_workflow
 from pydantic import ConfigDict
-from pydantic_forms.core import FormPage
-from pydantic_forms.types import FormGenerator, State, UUIDstr
 
 from products.product_types.file import FileInactive, FileProvisioning
 from products.services.description import description
+from pydantic_forms.core import FormPage
+from pydantic_forms.types import FormGenerator, State, UUIDstr
 from workflows.shared import create_summary_form
 
 FILE_SERVICE_DIR = "/home/orchestrator/dev-files"
 
-#TODO we probably need to handle UUID differently
+
+# TODO we probably need to handle UUID differently
 def initial_input_form_generator(product_name: str, product: UUIDstr) -> FormGenerator:
     class CreateFileForm(FormPage):
         model_config = ConfigDict(title=product_name)
@@ -45,7 +41,7 @@ def initial_input_form_generator(product_name: str, product: UUIDstr) -> FormGen
     summary_fields = ["file_name", "contents"]
     yield from create_summary_form(user_input_dict, product_name, summary_fields)
 
-    #TODO pre-flight check that file name is available
+    # TODO pre-flight check that file name is available
 
     return user_input_dict
 
@@ -59,13 +55,13 @@ def construct_file_model(
 ) -> State:
     subscription = FileInactive.from_product_id(
         product_id=product,
-        #TODO add a customer using the existing table!
+        # TODO add a customer using the existing table!
         customer_id=str(uuid.uuid4()),
         status=SubscriptionLifecycle.INITIAL,
         process_id=process_id,
     )
 
-    #TODO ensure file is uniquely named using separate table
+    # TODO ensure file is uniquely named using separate table
 
     subscription.file.file_name = file_name
     subscription.file.contents = contents
@@ -79,10 +75,12 @@ def construct_file_model(
         "subscription_description": subscription.description,
     }
 
+
 @step("Ensure directory exists")
 def ensure_directory_exists() -> State:
     os.makedirs(FILE_SERVICE_DIR, exist_ok=True)
     return {}
+
 
 @step("Create file on disk")
 def create_file_on_disk(subscription: FileProvisioning, file_name: str, contents: str) -> State:
@@ -94,9 +92,4 @@ def create_file_on_disk(subscription: FileProvisioning, file_name: str, contents
 
 @create_workflow("Create file", initial_input_form=initial_input_form_generator)
 def create_file() -> StepList:
-    return (
-        begin
-        >> construct_file_model
-        >> ensure_directory_exists
-        >> create_file_on_disk
-    )
+    return begin >> construct_file_model >> ensure_directory_exists >> create_file_on_disk

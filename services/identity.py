@@ -14,23 +14,25 @@ from http import HTTPStatus
 
 import jwt
 import structlog
-from starlette.requests import HTTPConnection
-from httpx import AsyncClient
-from oauth2_lib.fastapi import Authorization, GraphqlAuthorization, OIDCAuth, OIDCUserModel, RequestPath
 from fastapi import HTTPException
+from httpx import AsyncClient
 from jwt.exceptions import ExpiredSignatureError
+from starlette.requests import HTTPConnection
 
+from oauth2_lib.fastapi import Authorization, GraphqlAuthorization, OIDCAuth, OIDCUserModel
 from settings import settings
 
 logger = structlog.get_logger(__name__)
 
 _JWK_CLIENT: jwt.PyJWKClient | None = None
 
+
 def get_jwk_client() -> jwt.PyJWKClient:
     global _JWK_CLIENT
     if _JWK_CLIENT is None:
         _JWK_CLIENT = jwt.PyJWKClient(settings.OAUTH2_CERT_URL, cache_keys=True)
     return _JWK_CLIENT
+
 
 class MinimalUserInfoModel(OIDCUserModel):
     # Add any extra claims here
@@ -50,15 +52,18 @@ class MinimalUserInfoModel(OIDCUserModel):
     def user_name(self):
         return self.preferred_username
 
+
 class MinimalAuthorization(Authorization):
     async def authorize(self, request: HTTPConnection, user: OIDCUserModel) -> bool | None:
         # Add any authorization logic for the REST API (not workflows) here
         return True
 
+
 class MinimalGraphqlAuthorization(GraphqlAuthorization):
     async def authorize(self, request: HTTPConnection, method: str, user: OIDCUserModel) -> bool | None:
         # Add any authorization logic for the GraphQL API (not workflows) here
         return True
+
 
 class MinimalAuthentication(OIDCAuth):
     async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
@@ -77,7 +82,7 @@ class MinimalAuthentication(OIDCAuth):
                 token,
                 signing_key.key,
                 algorithms=settings.OAUTH2_SIGNING_ALGORITHMS,
-                #issuer=OAUTH2_ISSUER, # See above
+                # issuer=OAUTH2_ISSUER, # See above
                 options={"verify_aud": True},
             )
 
@@ -85,7 +90,7 @@ class MinimalAuthentication(OIDCAuth):
         except ExpiredSignatureError:
             message = "Unable to decode token, token has expired"
             raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=message)
-        except Exception as e:
+        except Exception:
             message = "Unable to decode token"
             raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=message)
 

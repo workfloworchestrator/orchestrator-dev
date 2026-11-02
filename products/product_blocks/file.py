@@ -12,7 +12,6 @@
 # limitations under the License.
 from orchestrator.core.domain.base import ProductBlockModel
 from orchestrator.core.types import SubscriptionLifecycle
-
 from pydantic import computed_field
 
 

@@ -19,4 +19,3 @@ class EnumBase(str, Enum):
     @classmethod
     def list(cls):
         return [member.value for member in cls]
-
