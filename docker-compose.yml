@@ -1,28 +1,3 @@
-x-netbox: &netbox
-  build:
-    context: docker/netbox
-    dockerfile: Dockerfile
-  depends_on:
-    - postgres
-    - redis
-  env_file:
-    - ./docker/netbox/netbox.env
-    - path: ./docker/overrides/netbox/netbox.env
-      required: false
-  user: "1000:0"
-  healthcheck:
-    start_period: 360s
-    timeout: 3s
-    interval: 15s
-    test: "curl -w '%{http_code}' -o /dev/null -s http://127.0.0.1:8080/api/ | grep -Eq '200|403'"
-  volumes:
-    - ./docker/netbox/configuration:/etc/netbox/config:z,ro
-    - ./docker/netbox/reports:/etc/netbox/reports:z,ro
-    - ./docker/netbox/scripts:/etc/netbox/scripts:z,ro
-    - ./docker/netbox/entrypoint.sh:/etc/netbox/entrypoint.sh
-    - netbox-media-files:/opt/netbox/netbox/media:z
-    - ./docker/netbox/data.json:/etc/netbox/data.json
-
 services:
   postgres:
     container_name: postgres
@@ -68,8 +43,6 @@ services:
       - ./docker/redis/redis.env
       - path: ./docker/overrides/redis/redis.env
         required: false
-    volumes:
-      - netbox-redis-cache-data:/data
 
   embeddings:
     container_name: embeddings
@@ -91,109 +64,110 @@ services:
       retries: 5
       start_period: 30s
 
-  rover-compose:
-    container_name: rover-compose
-    build:
-      context: docker/federation
-      dockerfile: rover.Dockerfile
-    depends_on:
-      orchestrator:
-        condition: service_healthy
-      netbox:
-        condition: service_healthy
+  # ui-library-builder provides separate TS hot-reloading for the UI *library*,
+  # which requires a separate process from the example-orchestrator-ui application's
+  # Next.js hot-reload. The output /out is on a volume that is mounted to the package's
+  # installed /dist in the orchestrator-ui service.
+  ui-library-builder:
+    image: node:26
+    working_dir: /repo
     environment:
-      - APOLLO_ELV2_LICENSE=accept
-      - APOLLO_TELEMETRY_DISABLED=true
-    command: supergraph compose --config /app/supergraph-config.yaml --output /app/supergraph.graphql --skip-update-check
+      - CHOKIDAR_USEPOLLING=true
     volumes:
-      - ./docker/federation:/app
-
-  federation:
-    container_name: federation
-    image: ghcr.io/apollographql/router:v2.11.0
-    ports:
-      - "4000:4000"
-    depends_on:
-      rover-compose:
-        condition: service_completed_successfully
-    environment:
-      - APOLLO_TELEMETRY_DISABLED=true
-    command: --config /app/router-config.yaml --supergraph /app/supergraph.graphql
-    volumes:
-      - ./docker/federation:/app
-
-  netbox:
-    <<: *netbox
-    container_name: netbox
-    expose:
-      - "8080"
-    ports:
-      - "8000:8080"
-    entrypoint:
-      ["/opt/netbox/docker-entrypoint.sh", "/etc/netbox/entrypoint.sh"]
-
-  netbox-worker:
-    <<: *netbox
-    container_name: netbox-worker
-    depends_on:
-      netbox:
-        condition: service_healthy
-    command:
-      - /opt/netbox/venv/bin/python
-      - /opt/netbox/netbox/manage.py
-      - rqworker
+      - ../orchestrator-ui-library:/repo
+      - lib_root_node_modules:/repo/node_modules
+      - lib_pkg_node_modules:/repo/packages/orchestrator-ui-components/node_modules
+      # Keep .turbo from writing to the host
+      - lib_turbo:/repo/.turbo
+      - lib_dist:/out
+    # This could be improved to rebuild all four packages
+    command: >
+      sh -c "npm ci &&
+             npx turbo run build &&
+             cd packages/orchestrator-ui-components &&
+             npx tsup --watch --out-dir /out src/index.ts"
     healthcheck:
-      start_period: 20s
-      timeout: 3s
-      interval: 15s
-      test: "ps -aux | grep -v grep | grep -q rqworker || exit 1"
+      test: ["CMD", "test", "-f", "/out/index.js"]
+      interval: 5s
+      retries: 60
+
 
   orchestrator-ui:
     container_name: orchestrator-ui
-    image: ${ORCH_UI_TAG:-ghcr.io/workfloworchestrator/example-orchestrator-ui:latest}
+    build:
+      context: ../example-orchestrator-ui
+      target: builder
+    entrypoint: ["npm", "run", "dev"]
+    volumes:
+      # Override Next.js configuration to react to changes in orchestrator-ui-components dist/ 
+      - ./docker/orchestrator-ui/next.config.js:/app/next.config.js
+      # Mount orchestrator-ui-components dist/ from ui-builder
+      - type: volume
+        source: lib_dist
+        target: /app/node_modules/@orchestrator-ui/orchestrator-ui-components/dist
+        volume:
+          # Prevents previous contents of dist/ from appearing if we mount an empty directory
+          nocopy: true
+      # It'd be cool to bindmount example-orchestrator-ui here if we get hot-reloading to work.
+    working_dir: /app
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
       - path: ./docker/overrides/orchestrator-ui/orchestrator-ui.env
         required: false
-    ports:
-      - "3000:3000"
+    # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    #ports:
+    #  - "3000:3000"
+    network_mode: "service:keycloak"
     depends_on:
+      ui-library-builder:
+        condition: service_healthy
       orchestrator:
+        condition: service_started
+      keycloak:
         condition: service_started
 
   orchestrator:
     container_name: orchestrator
     image: ${ORCH_BACKEND_TAG:-ghcr.io/workfloworchestrator/orchestrator-core:latest}
+    environment:
+      CORE_DST: ${CORE_DST}
+      FORMS_DST: ${FORMS_DST}
+      OAUTH2LIB_DST: ${OAUTH2LIB_DST}
+      NWASTDLIB_DST: ${NWASTDLIB_DST}
     env_file:
       - ./docker/orchestrator/orchestrator.env
       - path: ./docker/overrides/orchestrator/orchestrator.env
         required: false
-    environment:
-      LSO_ENABLED: ${LSO_ENABLED:-False}
-    ports:
-      - "8080:8080"
-      - "5678:5678" #Enable Python debugger
-    expose:
-      - 5678 #Enable Python debugger
+    # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    #ports:
+    #  - "8080:8080"
+    #  - "5678:5678" #Enable Python debugger
+
+    # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend
+    network_mode: "service:keycloak"
     volumes:
-      - ./db:/home/orchestrator/db
-      - ./workflows:/home/orchestrator/workflows
-      - ./products:/home/orchestrator/products
-      - ./migrations:/home/orchestrator/migrations
-      - ./docker:/home/orchestrator/etc
-      - ./main.py:/home/orchestrator/main.py
-      - ./wsgi.py:/home/orchestrator/wsgi.py
-      - ./settings.py:/home/orchestrator/settings.py
-      - ./graphql_utils:/home/orchestrator/graphql_utils
-      - ./utils:/home/orchestrator/utils
-      - ./services:/home/orchestrator/services
-      - ./pyproject.toml:/home/orchestrator/pyproject.toml
       - ./alembic.ini:/home/orchestrator/alembic.ini
+      - ./db:/home/orchestrator/db
+      - ./graphql_utils:/home/orchestrator/graphql_utils
+      - ./main.py:/home/orchestrator/main.py
+      - ./migrations:/home/orchestrator/migrations
+      - ./products:/home/orchestrator/products
+      - ./pyproject.toml:/home/orchestrator/pyproject.toml
+      - ./services:/home/orchestrator/services
+      - ./settings.py:/home/orchestrator/settings.py
       - ./translations:/home/orchestrator/translations
-      - ./templates:/home/orchestrator/templates
+      - ./utils:/home/orchestrator/utils
+      - ./workflows:/home/orchestrator/workflows
+      - ./wsgi.py:/home/orchestrator/wsgi.py
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc
-      - ${CORE_DIR:-./docker/overrides/orchestrator-core}:/home/orchestrator/orchestrator-core
-    entrypoint: ["/home/orchestrator/etc/orchestrator/entrypoint.sh"]
+      - ./docker/orchestrator/entrypoint.sh:/home/orchestrator/entrypoint.sh
+      - ./docker/orchestrator/is_healthy.py:/home/orchestrator/is_healthy.py
+      # Manage bind-mounts for hot-reloading Python packages. See README.
+      - "${CORE_SRC:-./docker/overrides/orchestrator-core}:${CORE_DST:-/home/orchestrator/orchestrator-core}"
+      - "${FORMS_SRC:-./docker/overrides/pydantic-forms}:${FORMS_DST:-/home/orchestrator/pydantic-forms}"
+      - "${OAUTH2LIB_SRC:-./docker/overrides/oauth2-lib}:${OAUTH2LIB_DST:-/home/orchestrator/oauth2-lib}"
+      - "${NWASTDLIB_SRC:-./docker/overrides/nwa-stdlib}:${NWASTDLIB_DST:-/home/orchestrator/nwa-stdlib}"
+    entrypoint: ["/home/orchestrator/entrypoint.sh"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -202,37 +176,48 @@ services:
       embeddings:
         condition: service_healthy
         required: false
+      keycloak:
+        condition: service_started
     healthcheck:
       start_period: 15s
       timeout: 5s
       interval: 5s
       retries: 20
-      test: /home/orchestrator/etc/orchestrator/is_healthy.py
+      test: /home/orchestrator/is_healthy.py
 
-  lso:
-    container_name: orchestrator-lso
-    profiles:
-      - lso
-    build:
-      context: ./docker/lso/
-      dockerfile: Dockerfile
-    env_file:
-      - ./docker/lso/lso.env
-      - path: ./docker/overrides/lso/lso.env
-        required: false
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.5
+    # To debug or generate user exports, uncomment the below, comment out "command", and uncomment the keycloak_export volume at bottom of service.
+    # entrypoint: tail -f /dev/null
+    # Then `export --dir /opt/keycloak/data/export --realm orchestrator --users same_file` inside the container
+    command: start-dev --import-realm --http-port=8085
     ports:
-      - "8001:8000"
+      # Keycloak itself
+      - "127.0.0.1:8085:8085"
+      # Temporary hack because NextAuth doesn't accept distinct well-known URIs for browser/client and its backend.
+      # Instead these services have to hand off their networking to the keycloak service in order to live on the same network.
+      # This allows to temporarily use a local URI that works in both the host OS browser and intra-app communication within the Docker network.
+      - "127.0.0.1:3000:3000" # Orch UI
+      # Maybe backend doesn't need this?? Is it just getting data from the JWT?
+      # I think it actually does need this to fetch a cert
+      # Orch backend is proxied because it needs access to t
+      - "127.0.0.1:8080:8080" # Orch backend app
+      - "127.0.0.1:5678:5678" # Orch backend debugger
+    env_file:
+      - ./docker/keycloak/keycloak.env
     volumes:
-      - ./ansible/plays_and_roles:/app/demo/ansible/playbooks
-      - ./ansible/inventory:/opt/ansible_inventory
-      - ./docker/lso/config.json:/app/config.json
+      # Uncomment if you need to generate new user exports
+      #- ./keycloak_export:/opt/keycloak/data/export
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
 
 volumes:
-  netbox-media-files:
-    driver: local
   db-data:
-    driver: local
-  netbox-redis-data:
     driver: local
   netbox-redis-cache-data:
     driver: local
+  # For binding UI builder into UI container
+  lib_root_node_modules:
+  lib_pkg_node_modules:
+  lib_turbo:
+  lib_dist:
+  #TODO additional volumes for preventing writes back to the host FS. If possible, should not persist.

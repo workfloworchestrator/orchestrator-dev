@@ -1,2 +1,0 @@
-set / system json-rpc-server admin-state enable
-set / system json-rpc-server network-instance mgmt http admin-state enable
