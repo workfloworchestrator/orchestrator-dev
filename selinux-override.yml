@@ -21,4 +21,7 @@ services:
       - ./translations:/home/orchestrator/translations:z
       #- ./templates:/home/orchestrator/templates:z
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc:z
-      - ${CORE_DIR:-./docker/overrides/orchestrator-core}:/home/orchestrator/orchestrator-core:z
+      - ${CORE_SRC:-./docker/overrides/orchestrator-core}:{CORE_DST}:z
+      - ${FORMS_SRC:-./docker/overrides/pydantic-forms}:${FORMS_DST}:z
+      - ${OAUTH2LIB_SRC:-./docker/overrides/oauth2-lib}:${OAUTH2LIB_DST}:z
+      - ${NWASTDLIB_SRC:-./docker/overrides/nwa-stdlib}:${NWASTDLIB_DST}:z
