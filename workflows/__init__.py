@@ -14,4 +14,6 @@
 
 from orchestrator.core.workflows import LazyWorkflowInstance
 
+LazyWorkflowInstance("workflows.tasks.showcase", "task_showcase")
+
 LazyWorkflowInstance("workflows.file.create_file", "create_file")
