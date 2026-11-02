@@ -5,7 +5,7 @@ version = "0.1.0"
 requires-python = "==3.13.*"
 dependencies = [
   # Ensure this matches Docker image tag specified by ORCH_BACKEND_TAG
-  "orchestrator-core==5.5.0",
+  "orchestrator-core==5.6.0rc1",
   "pyjwt>=2.13.0",
 ]
 

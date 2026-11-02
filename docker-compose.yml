@@ -163,10 +163,10 @@ services:
       - ./docker/orchestrator/entrypoint.sh:/home/orchestrator/entrypoint.sh
       - ./docker/orchestrator/is_healthy.py:/home/orchestrator/is_healthy.py
       # Manage bind-mounts for hot-reloading Python packages. See README.
-      - "${CORE_SRC:-./docker/overrides/orchestrator-core}:${CORE_DST}"
-      - "${FORMS_SRC:-./docker/overrides/pydantic-forms}:${FORMS_DST}"
-      - "${OAUTH2LIB_SRC:-./docker/overrides/oauth2-lib}:${OAUTH2LIB_DST}"
-      - "${NWASTDLIB_SRC:-./docker/overrides/nwa-stdlib}:${NWASTDLIB_DST}"
+      - "${CORE_SRC:-./docker/overrides/orchestrator-core}:${CORE_DST:-/home/orchestrator/orchestrator-core}"
+      - "${FORMS_SRC:-./docker/overrides/pydantic-forms}:${FORMS_DST:-/home/orchestrator/pydantic-forms}"
+      - "${OAUTH2LIB_SRC:-./docker/overrides/oauth2-lib}:${OAUTH2LIB_DST:-/home/orchestrator/oauth2-lib}"
+      - "${NWASTDLIB_SRC:-./docker/overrides/nwa-stdlib}:${NWASTDLIB_DST:-/home/orchestrator/nwa-stdlib}"
     entrypoint: ["/home/orchestrator/entrypoint.sh"]
     depends_on:
       postgres:
