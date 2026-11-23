@@ -18,7 +18,7 @@ To get started, clone this repo and the UI app side by side:
 git clone https://github.com/workfloworchestrator/orchestrator-dev.git
 git clone https://github.com/workfloworchestrator/example-orchestrator-ui.git
 # Optional, both enabled by default in .env.example:
-#  - hot-reload the UI component library (comment out ORCH_UI_LIB_DIR to use the npm release)
+#  - hot-reload the UI component library (set USE_LOCAL_COMPONENT_LIBRARY=false to use the npm release)
 git clone https://github.com/workfloworchestrator/orchestrator-ui-library.git
 #  - hot-reload orchestrator-core (comment out CORE_SRC to use the version in uv.lock)
 git clone https://github.com/workfloworchestrator/orchestrator-core.git
@@ -95,12 +95,15 @@ precedence over a `.env` file in your clone.
 ### Orchestrator UI component library: npm or local
 
 The UI app depends on `@orchestrator-ui/orchestrator-ui-components`. You choose
-where it comes from with `ORCH_UI_LIB_DIR` in your `.env`:
+where it comes from with `USE_LOCAL_COMPONENT_LIBRARY` in your `.env`:
 
-| `ORCH_UI_LIB_DIR` | Library used |
+| `USE_LOCAL_COMPONENT_LIBRARY` | Library used |
 |---|---|
-| Set, e.g. `../orchestrator-ui-library` (default in `.env.example`) | Your local clone, rebuilt and hot-reloaded on every change |
-| Commented out | The version pinned in `example-orchestrator-ui`'s `package.json`, from npm |
+| `true` (default in `.env.example`) | Your local clone at `ORCH_UI_LIB_DIR` (e.g. `../orchestrator-ui-library`), rebuilt and hot-reloaded on every change |
+| `false` (or unset) | The version pinned in `example-orchestrator-ui`'s `package.json`, from npm |
+
+`ORCH_UI_LIB_DIR` only sets where your clone is. If you haven't cloned the
+library, comment it out, or Docker creates an empty directory at that path.
 
 After changing it, run `docker compose up -d orchestrator-ui`; compose recreates
 the container.
@@ -119,7 +122,7 @@ does inside the container what `example-orchestrator-ui`'s own
 
 Step 2 changes `package.json` and `pnpm-lock.yaml` in your `example-orchestrator-ui`
 clone. Don't commit these; the app's pre-commit hook refuses them. To go back to the
-npm release, comment out `ORCH_UI_LIB_DIR`, run
+npm release, set `USE_LOCAL_COMPONENT_LIBRARY=false`, run
 `git checkout package.json pnpm-lock.yaml pnpm-workspace.yaml` in your
 `example-orchestrator-ui` clone, and recreate the container. If you forget the
 checkout, the container stops with these instructions.

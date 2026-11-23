@@ -2,8 +2,9 @@
 #
 # Starts the example-orchestrator-ui app, bind-mounted at /app, with `next dev`.
 #
-# If a local orchestrator-ui-library clone is mounted at ./orchestrator-ui-components
-# (ORCH_UI_LIB_DIR in .env), the app uses it instead of the npm release, the same way
+# With USE_LOCAL_COMPONENT_LIBRARY=true, the app uses the orchestrator-ui-library clone
+# mounted at ./orchestrator-ui-components (ORCH_UI_LIB_DIR in .env) instead of the npm
+# release, the same way
 # example-orchestrator-ui's use-local-orchestrator-ui-components.sh does:
 #   1. install and build the library,
 #   2. point the dependency in package.json to file:./orchestrator-ui-components and reinstall,
@@ -18,25 +19,41 @@ LOCAL_SPEC="file:./$LIB_DIR"
 
 cd /app
 
+case "$(echo "${USE_LOCAL_COMPONENT_LIBRARY:-false}" | tr '[:upper:]' '[:lower:]')" in
+    true | 1 | yes) use_local=true ;;
+    false | 0 | no | "") use_local=false ;;
+    *)
+        echo "Error: USE_LOCAL_COMPONENT_LIBRARY must be true or false, not '$USE_LOCAL_COMPONENT_LIBRARY'." >&2
+        exit 1
+        ;;
+esac
+
 current_spec=$(node -p "require('./package.json').dependencies['$PACKAGE'] ?? ''")
 if [ -z "$current_spec" ]; then
     echo "Error: $PACKAGE is not listed in dependencies of package.json." >&2
     exit 1
 fi
 
-if [ ! -f "$LIB_DIR/package.json" ]; then
+if [ "$use_local" = false ]; then
     if [ "$current_spec" = "$LOCAL_SPEC" ]; then
-        echo "Error: ORCH_UI_LIB_DIR is not set, but package.json still points $PACKAGE to $LOCAL_SPEC" >&2
-        echo "from an earlier run with a local library. To use the npm release, run in your" >&2
-        echo "example-orchestrator-ui clone:" >&2
+        echo "Error: USE_LOCAL_COMPONENT_LIBRARY is false, but package.json still points $PACKAGE" >&2
+        echo "to $LOCAL_SPEC from an earlier run with the local library. To use the npm release," >&2
+        echo "run in your example-orchestrator-ui clone:" >&2
         echo "  git checkout package.json pnpm-lock.yaml pnpm-workspace.yaml" >&2
-        echo "and start the container again. Or set ORCH_UI_LIB_DIR to keep using the local library." >&2
+        echo "and start the container again. Or set USE_LOCAL_COMPONENT_LIBRARY=true to keep using" >&2
+        echo "the local library." >&2
         exit 1
     fi
     echo "▶ Using $PACKAGE $current_spec from npm"
     pnpm install --frozen-lockfile
     echo "▶ Starting next dev"
     exec pnpm run dev
+fi
+
+if [ ! -f "$LIB_DIR/package.json" ]; then
+    echo "Error: USE_LOCAL_COMPONENT_LIBRARY is true, but no orchestrator-ui-library clone is mounted." >&2
+    echo "Set ORCH_UI_LIB_DIR in .env to the path of your clone, e.g. ../orchestrator-ui-library." >&2
+    exit 1
 fi
 
 echo "▶ Using local $PACKAGE from ORCH_UI_LIB_DIR"

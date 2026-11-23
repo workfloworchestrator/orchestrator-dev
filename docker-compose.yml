@@ -66,7 +66,7 @@ services:
 
   # The UI app, served with `next dev` from your bind-mounted example-orchestrator-ui
   # clone, so changes hot-reload. The component library comes from npm, or from a local
-  # orchestrator-ui-library clone when ORCH_UI_LIB_DIR is set.
+  # orchestrator-ui-library clone when USE_LOCAL_COMPONENT_LIBRARY=true.
   # See docker/orchestrator-ui/entrypoint.sh.
   orchestrator-ui:
     container_name: orchestrator-ui
@@ -81,6 +81,8 @@ services:
         RUN corepack enable
     entrypoint: ["/entrypoint.sh"]
     environment:
+      # true: use the orchestrator-ui-library clone at ORCH_UI_LIB_DIR; false: use the npm release
+      USE_LOCAL_COMPONENT_LIBRARY: ${USE_LOCAL_COMPONENT_LIBRARY:-false}
       NEXT_TELEMETRY_DISABLED: "1"
       HUSKY: "0"
       # Non-interactive pnpm; also makes `pnpm install` default to --frozen-lockfile
@@ -98,7 +100,8 @@ services:
       # Linux node_modules and build output, kept apart from the ones on your host
       - ui_app_node_modules:/app/node_modules
       - ui_app_next:/app/.next
-      # Local library clone, or an empty directory to use the npm release. See README.
+      # Local library clone (only used when USE_LOCAL_COMPONENT_LIBRARY=true), or an
+      # empty directory when ORCH_UI_LIB_DIR is unset. See README.
       - "${ORCH_UI_LIB_DIR:-./docker/overrides/orchestrator-ui-library}:/app/orchestrator-ui-components"
       - ui_lib_node_modules:/app/orchestrator-ui-components/node_modules
       # pnpm store and corepack downloads, so restarts don't download everything again
