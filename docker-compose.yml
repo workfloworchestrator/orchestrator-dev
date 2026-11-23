@@ -64,51 +64,35 @@ services:
       retries: 5
       start_period: 30s
 
-  # ui-library-builder provides separate TS hot-reloading for the UI *library*,
-  # which requires a separate process from the example-orchestrator-ui application's
-  # Next.js hot-reload. The output /out is on a volume that is mounted to the package's
-  # installed /dist in the orchestrator-ui service.
-  ui-library-builder:
-    image: node:26
-    working_dir: /repo
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-    volumes:
-      - ${ORCH_UI_LIB_DIR:-../orchestrator-ui-library}:/repo
-      - lib_root_node_modules:/repo/node_modules
-      - lib_pkg_node_modules:/repo/packages/orchestrator-ui-components/node_modules
-      # Keep .turbo from writing to the host
-      - lib_turbo:/repo/.turbo
-      - lib_dist:/out
-    # This could be improved to rebuild all four packages
-    command: >
-      sh -c "npm ci &&
-             npx turbo run build &&
-             cd packages/orchestrator-ui-components &&
-             npx tsup --watch --out-dir /out src/index.ts"
-    healthcheck:
-      test: ["CMD", "test", "-f", "/out/index.js"]
-      interval: 5s
-      retries: 60
-
-
+  # The UI app. Its source is copied into the image at build time, so changes to
+  # example-orchestrator-ui need `docker compose up --build orchestrator-ui`.
+  # The component library comes from npm, or from a local orchestrator-ui-library
+  # clone when ORCH_UI_LIB_DIR is set. See docker/orchestrator-ui/entrypoint.sh.
   orchestrator-ui:
     container_name: orchestrator-ui
     build:
       context: ${ORCH_UI_DIR:-../example-orchestrator-ui}
-      target: builder
-    entrypoint: ["npm", "run", "dev"]
+      dockerfile_inline: |
+        FROM node:24-bookworm-slim
+        ENV NEXT_TELEMETRY_DISABLED=1 HUSKY=0 CI=true COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+        # procps: tsup --watch needs `ps` to stop the previous --onSuccess command
+        RUN apt-get update && apt-get install -y --no-install-recommends procps && rm -rf /var/lib/apt/lists/*
+        # Uses the pnpm version pinned in package.json's "packageManager" field
+        RUN corepack enable
+        WORKDIR /app
+        COPY . .
+        # Drop anything installed or built on the host (incl. a host-side local library checkout)
+        RUN rm -rf node_modules .next orchestrator-ui-components && pnpm install --frozen-lockfile
+    entrypoint: ["/entrypoint.sh"]
+    environment:
+      # File events from host bind mounts don't always reach the container; poll instead.
+      CHOKIDAR_USEPOLLING: "true"
     volumes:
-      # Override Next.js configuration to react to changes in orchestrator-ui-components dist/ 
-      - ./docker/orchestrator-ui/next.config.js:/app/next.config.js
-      # Mount orchestrator-ui-components dist/ from ui-builder
-      - type: volume
-        source: lib_dist
-        target: /app/node_modules/@orchestrator-ui/orchestrator-ui-components/dist
-        volume:
-          # Prevents previous contents of dist/ from appearing if we mount an empty directory
-          nocopy: true
-      # It'd be cool to bindmount example-orchestrator-ui here if we get hot-reloading to work.
+      - ./docker/orchestrator-ui/entrypoint.sh:/entrypoint.sh:ro
+      # Local library clone, or an empty directory to use the npm release. See README.
+      - "${ORCH_UI_LIB_DIR:-./docker/overrides/orchestrator-ui-library}:/app/orchestrator-ui-components"
+      # Keep the library's node_modules out of the host clone
+      - ui_lib_node_modules:/app/orchestrator-ui-components/node_modules
     working_dir: /app
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
@@ -119,8 +103,6 @@ services:
     #  - "3000:3000"
     network_mode: "service:keycloak"
     depends_on:
-      ui-library-builder:
-        condition: service_healthy
       orchestrator:
         condition: service_started
       keycloak:
@@ -154,6 +136,7 @@ services:
       - ./migrations:/home/orchestrator/migrations
       - ./products:/home/orchestrator/products
       - ./pyproject.toml:/home/orchestrator/pyproject.toml
+      - ./uv.lock:/home/orchestrator/uv.lock
       - ./services:/home/orchestrator/services
       - ./settings.py:/home/orchestrator/settings.py
       - ./translations:/home/orchestrator/translations
@@ -216,9 +199,5 @@ volumes:
     driver: local
   netbox-redis-cache-data:
     driver: local
-  # For binding UI builder into UI container
-  lib_root_node_modules:
-  lib_pkg_node_modules:
-  lib_turbo:
-  lib_dist:
-  #TODO additional volumes for preventing writes back to the host FS. If possible, should not persist.
+  # node_modules of the local orchestrator-ui-library clone
+  ui_lib_node_modules:

@@ -10,15 +10,18 @@ At a glance, you get:
   * Currently no support for loading upstream packages like `pydantic-forms` and `oauth2_lib`
 * Rebuildable use of `example-orchestrator-ui`
   * Currently doesn't hot-reload. Users must rebuild the local image with `docker compose up --build orchestrator-ui`.
-* Hot-reloading of `orchestrator-ui-library` into the UI container
+* The UI component library from npm, or hot-reloaded from a local `orchestrator-ui-library` clone
+  (see [Orchestrator UI component library: npm or local](#orchestrator-ui-component-library-npm-or-local))
 
 
-To get started, clone this repo and the two UI repos side by side:
+To get started, clone this repo and the UI app side by side:
 ```
 git clone https://github.com/workfloworchestrator/orchestrator-dev.git
 git clone https://github.com/workfloworchestrator/example-orchestrator-ui.git
+# Optional, both enabled by default in .env.example:
+#  - hot-reload the UI component library (comment out ORCH_UI_LIB_DIR to use the npm release)
 git clone https://github.com/workfloworchestrator/orchestrator-ui-library.git
-# Optional: hot-reload orchestrator-core (enabled by default in .env.example)
+#  - hot-reload orchestrator-core (comment out CORE_SRC to use the version in uv.lock)
 git clone https://github.com/workfloworchestrator/orchestrator-core.git
 cd orchestrator-dev
 cp .env.example .env
@@ -44,6 +47,8 @@ Changes in the other repos should load automatically, perhaps with a delay of a 
 Subsequent runs should only require `docker compose up` unless you've changed the `example-orchestrator-ui`.
 
 To access the orchestrator, visit http://localhost:3000 and log in as `alice:alice` or `bob:bob`.
+
+Visit http://localhost:8080/api/docs to view the Swagger UI.
 
 To access keycloak itself, visit http://localhost:8085 and log in as `admin:admin`.
 
@@ -75,9 +80,40 @@ ORCH_BACKEND_TAG=my-local-image:tag docker compose up -d --force-recreate orches
 ```
 
 The `orchestrator-ui` service is built locally from the `example-orchestrator-ui`
-repo, and `ui-library-builder` mounts the `orchestrator-ui-library` repo. Their
-locations are set by `ORCH_UI_DIR` and `ORCH_UI_LIB_DIR` and default to
-`../example-orchestrator-ui` and `../orchestrator-ui-library`.
+repo, set by `ORCH_UI_DIR` (default `../example-orchestrator-ui`). The app's source
+is copied into the image, so after changing it run
+`docker compose up --build orchestrator-ui`. The container runs `next dev`.
+
+### Orchestrator UI component library: npm or local
+
+The UI app depends on `@orchestrator-ui/orchestrator-ui-components`. You choose
+where it comes from with `ORCH_UI_LIB_DIR` in your `.env`:
+
+| `ORCH_UI_LIB_DIR` | Library used |
+|---|---|
+| Set, e.g. `../orchestrator-ui-library` (default in `.env.example`) | Your local clone, rebuilt and hot-reloaded on every change |
+| Commented out | The version pinned in `example-orchestrator-ui`'s `package.json`, from npm |
+
+After changing it, run `docker compose up -d orchestrator-ui`; compose recreates
+the container.
+
+In local mode, [`docker/orchestrator-ui/entrypoint.sh`](./docker/orchestrator-ui/entrypoint.sh)
+does inside the container what `example-orchestrator-ui`'s own
+`use-local-orchestrator-ui-components.sh` does on a host:
+
+1. The clone is mounted at `/app/orchestrator-ui-components`, and the library is
+   installed (`pnpm install`) and built.
+2. The app's dependency is pointed to `file:./orchestrator-ui-components` and
+   the app is reinstalled. The library's own dependencies are installed too,
+   so the app doesn't need to pin the same library version.
+3. `tsup --watch` rebuilds the library on every change and copies the output
+   into the installed package, where `next dev` picks it up.
+
+Step 2 changes `package.json` and `pnpm-lock.yaml` only inside the container's copy
+of the app, never in your `example-orchestrator-ui` clone. The container stops if
+either the library watcher or `next dev` exits; check `docker logs orchestrator-ui`.
+
+The first start in local mode takes a minute or two for the library install and build.
 
 #### `orchestrator-core` Version and `ORCH_BACKEND_TAG`
 Users must ensure that the `orchestrator-core` version pinned in `pyproject.toml` is compatible with the image specified via `ORCH_BACKEND_TAG` in their `.env`, as uv does not yet support variable expansion within `pyproject.toml`.
@@ -87,4 +123,4 @@ You may pull a version of the UI library that requires a greater version of the 
 This adds a bit of friction to steadily bump these versions, but it allows devs to sync very specific versions of each library as needed.
 
 ### Artifacts
-When `orchestrator-ui-library` is bind-mounted, its `node_modules` is overriden by another volume, so this won't touch the host FS for the repo. However, all the other places that Node, Husky, and Turbo write to the filesystem are still bind-mounted. `git clean -xdn` will do a dry-run cleanup of these files, and `git clean -xdf` will execute the cleanup.
+When `orchestrator-ui-library` is bind-mounted, its `node_modules` is on a Docker volume (`ui_lib_node_modules`), so it doesn't touch your clone. The build does write `dist/` and `src/configuration/version.ts` into the clone; both are gitignored. `git clean -xdn` will do a dry-run cleanup of ignored files, and `git clean -xdf` will execute the cleanup.
