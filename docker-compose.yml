@@ -74,7 +74,7 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
     volumes:
-      - ../orchestrator-ui-library:/repo
+      - ${ORCH_UI_LIB_DIR:-../orchestrator-ui-library}:/repo
       - lib_root_node_modules:/repo/node_modules
       - lib_pkg_node_modules:/repo/packages/orchestrator-ui-components/node_modules
       # Keep .turbo from writing to the host
@@ -95,7 +95,7 @@ services:
   orchestrator-ui:
     container_name: orchestrator-ui
     build:
-      context: ../example-orchestrator-ui
+      context: ${ORCH_UI_DIR:-../example-orchestrator-ui}
       target: builder
     entrypoint: ["npm", "run", "dev"]
     volumes:
@@ -130,10 +130,11 @@ services:
     container_name: orchestrator
     image: ${ORCH_BACKEND_TAG:-ghcr.io/workfloworchestrator/orchestrator-core:latest}
     environment:
-      CORE_DST: ${CORE_DST}
-      FORMS_DST: ${FORMS_DST}
-      OAUTH2LIB_DST: ${OAUTH2LIB_DST}
-      NWASTDLIB_DST: ${NWASTDLIB_DST}
+      # Fallbacks must match the volume targets below, so the entrypoint finds the mounts.
+      CORE_DST: ${CORE_DST:-/home/orchestrator/orchestrator-core}
+      FORMS_DST: ${FORMS_DST:-/home/orchestrator/pydantic-forms}
+      OAUTH2LIB_DST: ${OAUTH2LIB_DST:-/home/orchestrator/oauth2-lib}
+      NWASTDLIB_DST: ${NWASTDLIB_DST:-/home/orchestrator/nwa-stdlib}
     env_file:
       - ./docker/orchestrator/orchestrator.env
       - path: ./docker/overrides/orchestrator/orchestrator.env

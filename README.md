@@ -13,20 +13,28 @@ At a glance, you get:
 * Hot-reloading of `orchestrator-ui-library` into the UI container
 
 
-To get started:
+To get started, clone this repo and the two UI repos side by side:
 ```
-git clone https://github.com/workfloworchestrator/orchestrator-core.git
-git clone https://github.com/workfloworchestrator/orchestrator-ui-library.git
-git clone https://github.com/workfloworchestrator/example-orchestrator-ui.git
-# WFO Python dependencies
-git clone https://github.com/workfloworchestrator/pydantic-forms.git
-git clone https://github.com/workfloworchestrator/oauth2-lib.git
-git clone https://github.com/workfloworchestrator/nwa-stdlib.git
 git clone https://github.com/workfloworchestrator/orchestrator-dev.git
+git clone https://github.com/workfloworchestrator/example-orchestrator-ui.git
+git clone https://github.com/workfloworchestrator/orchestrator-ui-library.git
+# Optional: hot-reload orchestrator-core (enabled by default in .env.example)
+git clone https://github.com/workfloworchestrator/orchestrator-core.git
 cd orchestrator-dev
 cp .env.example .env
 docker compose up --build
 ```
+
+If you want to hack on the other WFO Python dependencies, clone them next to the
+others as well and uncomment the matching `*_SRC` line in your `.env`
+(see [Hot-reloading Python dependencies](#hot-reloading-python-dependencies)):
+```
+git clone https://github.com/workfloworchestrator/pydantic-forms.git
+git clone https://github.com/workfloworchestrator/oauth2-lib.git
+git clone https://github.com/workfloworchestrator/nwa-stdlib.git
+```
+
+Any Python library that isn't cloned is installed at the version pinned in `uv.lock`.
 
 
 The initial frontend build will take a couple of minutes, but then you'll be hot-reloading.
@@ -52,24 +60,24 @@ Using `orchestrator-core` as an example:
     * `services:orchestrator:volumes:` maps `CORE_SRC` to `CORE_DST`
 * `docker/orchestrator/entrypoint.sh`: installs the mounted package in editable mode via the `reload` function.
 
-These variables are all commented out in `.env.example`. Uncomment the ones that you'd like to take advantage of in your `.env`.
+In `.env.example`, `CORE_SRC` is enabled and the other variables are commented out. Uncomment the ones that you'd like to take advantage of in your `.env`.
 
 Note that `docker-compose.yml` provides fallbacks for each of these variables. Ignoring a `_SRC` variable will use the `./docker/overrides/<package>/` directory; by default, this will be empty. Ignoring a `_DST` variable mounts the `_SRC` in the expected location: `/home/orchestrator/<package>`. If the directory in the container lacks a `pyproject.toml`, as is the case for an empty or missing `./docker/overrides/<package>/` directory, then the version of the package specified in `uv.lock` is instead used.
 
-### Orchestrator UI & backend docker image overrides
+### Orchestrator UI & backend sources
 
-In [docker-compose.yml](./docker-compose.yml), the `orchestrator` and
-`orchestrator-ui` services use pre-built images to spin up their respective
-applications (i.e., there is no `build:` directive specified). The docker image
-tag defaults to use the artifacts built in the workfloworchestrator project's
-Github Container Registry, but can be overridden by setting environment
-variables.
-
-For example,
+In [docker-compose.yml](./docker-compose.yml), the `orchestrator` service uses a
+pre-built image. It defaults to the image in the workfloworchestrator project's
+Github Container Registry set in `ORCH_BACKEND_TAG`, which you can override:
 
 ```bash
-ORCH_UI_TAG=my-local-image:tag docker compose up -d --force-recreate
+ORCH_BACKEND_TAG=my-local-image:tag docker compose up -d --force-recreate orchestrator
 ```
+
+The `orchestrator-ui` service is built locally from the `example-orchestrator-ui`
+repo, and `ui-library-builder` mounts the `orchestrator-ui-library` repo. Their
+locations are set by `ORCH_UI_DIR` and `ORCH_UI_LIB_DIR` and default to
+`../example-orchestrator-ui` and `../orchestrator-ui-library`.
 
 #### `orchestrator-core` Version and `ORCH_BACKEND_TAG`
 Users must ensure that the `orchestrator-core` version pinned in `pyproject.toml` is compatible with the image specified via `ORCH_BACKEND_TAG` in their `.env`, as uv does not yet support variable expansion within `pyproject.toml`.
