@@ -64,35 +64,45 @@ services:
       retries: 5
       start_period: 30s
 
-  # The UI app. Its source is copied into the image at build time, so changes to
-  # example-orchestrator-ui need `docker compose up --build orchestrator-ui`.
-  # The component library comes from npm, or from a local orchestrator-ui-library
-  # clone when ORCH_UI_LIB_DIR is set. See docker/orchestrator-ui/entrypoint.sh.
+  # The UI app, served with `next dev` from your bind-mounted example-orchestrator-ui
+  # clone, so changes hot-reload. The component library comes from npm, or from a local
+  # orchestrator-ui-library clone when ORCH_UI_LIB_DIR is set.
+  # See docker/orchestrator-ui/entrypoint.sh.
   orchestrator-ui:
     container_name: orchestrator-ui
     build:
-      context: ${ORCH_UI_DIR:-../example-orchestrator-ui}
+      # The image only holds tools; the app itself is mounted below.
+      context: ./docker/orchestrator-ui
       dockerfile_inline: |
         FROM node:24-bookworm-slim
-        ENV NEXT_TELEMETRY_DISABLED=1 HUSKY=0 CI=true COREPACK_ENABLE_DOWNLOAD_PROMPT=0
         # procps: tsup --watch needs `ps` to stop the previous --onSuccess command
         RUN apt-get update && apt-get install -y --no-install-recommends procps && rm -rf /var/lib/apt/lists/*
         # Uses the pnpm version pinned in package.json's "packageManager" field
         RUN corepack enable
-        WORKDIR /app
-        COPY . .
-        # Drop anything installed or built on the host (incl. a host-side local library checkout)
-        RUN rm -rf node_modules .next orchestrator-ui-components && pnpm install --frozen-lockfile
     entrypoint: ["/entrypoint.sh"]
     environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      HUSKY: "0"
+      # Non-interactive pnpm; also makes `pnpm install` default to --frozen-lockfile
+      CI: "true"
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      COREPACK_HOME: /cache/corepack
+      npm_config_store_dir: /cache/pnpm-store
       # File events from host bind mounts don't always reach the container; poll instead.
       CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     volumes:
       - ./docker/orchestrator-ui/entrypoint.sh:/entrypoint.sh:ro
+      # The app clone. In local library mode, package.json and pnpm-lock.yaml in it change.
+      - ${ORCH_UI_DIR:-../example-orchestrator-ui}:/app
+      # Linux node_modules and build output, kept apart from the ones on your host
+      - ui_app_node_modules:/app/node_modules
+      - ui_app_next:/app/.next
       # Local library clone, or an empty directory to use the npm release. See README.
       - "${ORCH_UI_LIB_DIR:-./docker/overrides/orchestrator-ui-library}:/app/orchestrator-ui-components"
-      # Keep the library's node_modules out of the host clone
       - ui_lib_node_modules:/app/orchestrator-ui-components/node_modules
+      # pnpm store and corepack downloads, so restarts don't download everything again
+      - ui_cache:/cache
     working_dir: /app
     env_file:
       - ./docker/orchestrator-ui/orchestrator-ui.env
@@ -199,5 +209,8 @@ volumes:
     driver: local
   netbox-redis-cache-data:
     driver: local
-  # node_modules of the local orchestrator-ui-library clone
+  # orchestrator-ui: Linux node_modules, Next.js output, pnpm/corepack caches
+  ui_app_node_modules:
+  ui_app_next:
   ui_lib_node_modules:
+  ui_cache:
