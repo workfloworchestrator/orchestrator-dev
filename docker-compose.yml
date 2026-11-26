@@ -69,7 +69,10 @@ services:
   # Next.js hot-reload. The output /out is on a volume that is mounted to the package's
   # installed /dist in the orchestrator-ui service.
   ui-library-builder:
-    image: node:26
+    container_name: ui-library-builder
+    build:
+      context: ../example-orchestrator-ui
+      target: builder
     working_dir: /repo
     environment:
       - CHOKIDAR_USEPOLLING=true
@@ -82,10 +85,7 @@ services:
       - lib_dist:/out
     # This could be improved to rebuild all four packages
     command: >
-      sh -c "npm ci &&
-             npx turbo run build &&
-             cd packages/orchestrator-ui-components &&
-             npx tsup --watch --out-dir /out src/index.ts"
+      sh -c "pnpm ci && npx turbo run build && pnpm run dev --out-dir /out src/index.ts"
     healthcheck:
       test: ["CMD", "test", "-f", "/out/index.js"]
       interval: 5s
@@ -157,6 +157,7 @@ services:
       - ./settings.py:/home/orchestrator/settings.py
       - ./translations:/home/orchestrator/translations
       - ./utils:/home/orchestrator/utils
+      - ./uv.lock:/home/orchestrator/uv.lock
       - ./workflows:/home/orchestrator/workflows
       - ./wsgi.py:/home/orchestrator/wsgi.py
       - ./docker/orchestrator/.bashrc:/home/orchestrator/.bashrc

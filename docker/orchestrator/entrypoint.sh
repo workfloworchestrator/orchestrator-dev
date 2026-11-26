@@ -8,7 +8,7 @@ set -eu
 export UV_PYTHON_DOWNLOADS=never
 
 # Install extra requirements for our repo
-uv sync
+uv sync --frozen
 source .venv/bin/activate
 
 setup() {
