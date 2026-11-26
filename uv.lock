@@ -988,7 +988,7 @@ wheels = [
 
 [[package]]
 name = "orchestrator-core"
-version = "5.6.0rc1"
+version = "5.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -1028,9 +1028,9 @@ dependencies = [
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/30/a7a197f148773dbebd4d7b6d0e3d41c2afeb763cb079f70f45f137534381/orchestrator_core-5.6.0rc1.tar.gz", hash = "sha256:8a3aa9871ccade4d9c8eee2dcd83b36617d937093e2a29f659386534f936e68d", size = 463246, upload-time = "2026-11-02T14:16:18.356Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/a2/74de646ec94ccc1e007d3048a2d131f824a759025c85f474b828c7435731/orchestrator_core-5.6.0.tar.gz", hash = "sha256:13b9cd17d083ddb0afb12d2c261c13f87c0351235aa9ff4d8f1bbc7809039fc7", size = 462808, upload-time = "2026-11-05T11:12:06.893Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/c0/7a540314df116c4b75236bb1fa54ebcf16b0108fa0aa7a7de7f4619fa77a/orchestrator_core-5.6.0rc1-py3-none-any.whl", hash = "sha256:f195f57832363837b775a5486ca1de5f53e818cad4494688cc835c0b571135e7", size = 757951, upload-time = "2026-11-02T14:16:16.289Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/87/c699e629b8917e81418a3352eec3ebe114b61afcb8320fb401fbb6588daf/orchestrator_core-5.6.0-py3-none-any.whl", hash = "sha256:2cf64460629be727ba07a530765c525f8eaebd5f9199aaed09e9819ff43a44f6", size = 757908, upload-time = "2026-11-05T11:12:04.875Z" },
 ]
 
 [[package]]
@@ -1040,6 +1040,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "orchestrator-core" },
     { name = "pyjwt" },
+    { name = "sentry-sdk", extra = ["fastapi"] },
 ]
 
 [package.dev-dependencies]
@@ -1052,8 +1053,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "orchestrator-core", specifier = "==5.6.0rc1" },
+    { name = "orchestrator-core", specifier = "==5.6.0" },
     { name = "pyjwt", specifier = ">=2.13.0" },
+    { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.29.1,<3.0.0" },
 ]
 
 [package.metadata.requires-dev]

@@ -58,17 +58,15 @@ Note that `docker-compose.yml` provides fallbacks for each of these variables. I
 
 ### Orchestrator UI & backend docker image overrides
 
-In [docker-compose.yml](./docker-compose.yml), the `orchestrator` and
-`orchestrator-ui` services use pre-built images to spin up their respective
-applications (i.e., there is no `build:` directive specified). The docker image
-tag defaults to use the artifacts built in the workfloworchestrator project's
-Github Container Registry, but can be overridden by setting environment
-variables.
+In [docker-compose.yml](./docker-compose.yml), the `orchestrator` service
+uses a pre-built image (i.e., there is no `build:` directive specified).
+The docker image tag defaults to use the artifacts built in the workfloworchestrator
+project's Github Container Registry, but can be overridden via environment variable.
 
 For example,
 
 ```bash
-ORCH_UI_TAG=my-local-image:tag docker compose up -d --force-recreate
+ORCH_BACKEND_TAG=my-local-image:tag docker compose up -d --force-recreate
 ```
 
 #### `orchestrator-core` Version and `ORCH_BACKEND_TAG`
